@@ -12,11 +12,11 @@ import { toast } from 'sonner';
 
 const NAV = [
   { to: '/admin/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
-  { to: '/admin/clients',    label: 'Clients',    icon: Building2 },
-  { to: '/admin/categories', label: 'Categories', icon: Tag },
-  { to: '/admin/reviews',    label: 'Reviews',    icon: MessageSquare },
-  { to: '/admin/analytics',  label: 'Analytics',  icon: BarChart3 },
-  { to: '/admin/settings',   label: 'Settings',   icon: Settings },
+  { to: '/admin/clients',    label: 'Clients',     icon: Building2 },
+  { to: '/admin/categories', label: 'Categories',  icon: Tag },
+  { to: '/admin/reviews',    label: 'Reviews',     icon: MessageSquare },
+  { to: '/admin/analytics',  label: 'Analytics',   icon: BarChart3 },
+  { to: '/admin/settings',   label: 'Settings',    icon: Settings },
 ];
 
 export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
@@ -34,18 +34,15 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
   }
 
   const itemBase = cn(
-    'relative flex items-center gap-3.5 w-full rounded-lg text-[13.5px] font-medium',
-    'transition-colors duration-150 select-none cursor-pointer h-[50px]',
+    'relative flex items-center gap-3.5 w-full rounded-lg text-[13.5px]',
+    'transition-all duration-150 select-none cursor-pointer h-[48px]',
   );
-
-  const itemActive   = 'bg-white/[0.18] text-white font-semibold';
-  const itemInactive = 'text-sidebar-foreground/60 hover:text-white hover:bg-white/[0.08]';
 
   const collapsedBase = 'md:justify-center md:px-0 md:mx-auto md:w-10';
 
   return (
     <TooltipProvider delayDuration={0}>
-      {/* ── Mobile backdrop ───────────────────────────── */}
+      {/* ── Mobile backdrop ─────────────────────────────── */}
       <div
         onClick={onClose}
         className={cn(
@@ -54,11 +51,11 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
         )}
       />
 
-      {/* ── Sidebar shell ─────────────────────────────── */}
+      {/* ── Sidebar shell ───────────────────────────────── */}
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-50 flex flex-col h-screen',
-          'bg-sidebar text-sidebar-foreground border-r border-sidebar-border overflow-hidden shrink-0',
+          'bg-white border-r border-gray-200 overflow-hidden shrink-0',
           'transition-all duration-300 ease-in-out',
           'md:relative md:z-auto md:translate-x-0',
           collapsed ? 'md:w-[72px]' : 'md:w-[250px]',
@@ -67,30 +64,25 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
         )}
       >
 
-        {/* ── Brand / App name area ──────────────────────── */}
+        {/* ── Brand ───────────────────────────────────────── */}
         <div
           className={cn(
-            'flex items-center shrink-0 border-b border-white/8',
+            'flex items-center shrink-0 border-b border-gray-100',
             collapsed
               ? 'md:flex-col md:justify-center md:py-5 md:px-0 px-5 py-5 gap-3'
-              : 'px-5 py-5 gap-4',
+              : 'px-5 py-5 gap-3.5',
           )}
         >
-          {/* App icon */}
-          <div
-            className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm"
-          >
-            <Zap size={20} className="text-white" strokeWidth={2.5} />
+          <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
+            <Zap size={18} className="text-white" strokeWidth={2.5} />
           </div>
-
-          {/* App name — hidden on desktop collapsed */}
           <div className={cn('min-w-0 flex-1 overflow-hidden', collapsed && 'md:hidden')}>
-            <p className="font-bold text-white text-[15px] leading-tight">Review Boost</p>
-            <p className="text-xs text-sidebar-foreground/50 mt-0.5">Super Admin</p>
+            <p className="font-bold text-gray-900 text-[14.5px] leading-tight">Review Boost</p>
+            <p className="text-[11px] text-gray-400 mt-0.5 font-medium">Super Admin</p>
           </div>
         </div>
 
-        {/* ── Navigation ────────────────────────────────── */}
+        {/* ── Navigation ──────────────────────────────────── */}
         <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
           {NAV.map((item) => {
             const isActive = active(item.to);
@@ -98,21 +90,28 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
               <Tooltip key={item.to}>
                 <TooltipTrigger asChild>
                   <div className="relative">
-                    {/* Active left indicator */}
+                    {/* Left accent line — only when active */}
                     {isActive && (
                       <span
                         className={cn(
-                          'absolute left-0 top-[8px] bottom-[8px] w-[3px] bg-primary rounded-r-full',
+                          'absolute left-0 top-[7px] bottom-[7px] w-[3px] bg-primary rounded-r-full',
                           collapsed && 'md:hidden',
                         )}
                       />
                     )}
+
                     <NavLink
                       to={item.to}
                       onClick={onClose}
                       className={cn(
                         itemBase,
-                        isActive ? itemActive : itemInactive,
+                        isActive
+                          ? [
+                              /* Active: light bg lift + bold black */
+                              'bg-gray-50 text-gray-900 font-semibold',
+                              'shadow-[0_1px_3px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)]',
+                            ]
+                          : 'text-gray-500 font-medium hover:text-gray-900 hover:bg-gray-50/70',
                         !collapsed && isActive ? 'pl-4 pr-3' : 'px-3',
                         collapsed && collapsedBase,
                       )}
@@ -120,9 +119,9 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
                       <item.icon
                         className={cn(
                           'shrink-0 transition-colors',
-                          isActive ? 'text-white' : 'text-sidebar-foreground/50',
+                          isActive ? 'text-gray-900' : 'text-gray-400',
                         )}
-                        size={20}
+                        size={19}
                         strokeWidth={isActive ? 2.2 : 1.75}
                       />
                       <span className={cn('truncate leading-none', collapsed && 'md:hidden')}>
@@ -141,20 +140,19 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
           })}
         </nav>
 
-        {/* ── Logout — pinned at bottom ──────────────────── */}
-        <div className="shrink-0 border-t border-white/8 px-3 py-3">
+        {/* ── Logout ──────────────────────────────────────── */}
+        <div className="shrink-0 border-t border-gray-100 px-3 py-3">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={handleLogout}
                 className={cn(
                   itemBase,
-                  'text-sidebar-foreground/60 hover:text-red-400 hover:bg-red-500/10',
-                  'px-3',
+                  'text-gray-400 font-medium hover:text-red-600 hover:bg-red-50 px-3',
                   collapsed && collapsedBase,
                 )}
               >
-                <LogOut className="shrink-0 text-sidebar-foreground/50" size={20} strokeWidth={1.75} />
+                <LogOut className="shrink-0" size={19} strokeWidth={1.75} />
                 <span className={cn('truncate', collapsed && 'md:hidden')}>Logout</span>
               </button>
             </TooltipTrigger>
