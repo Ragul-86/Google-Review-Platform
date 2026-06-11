@@ -8,7 +8,7 @@ const { sendFeedbackNotification } = require('../services/emailService');
 // @route   GET /api/reviews
 // @access  Private
 const getReviews = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, type = '', rating = '', search = '', clientId = '' } = req.query;
+  const { page = 1, limit = 20, type = '', rating = '', search = '', clientId = '', dateRange = '' } = req.query;
 
   const query = {};
   if (req.user.role === 'clientadmin') {
@@ -22,6 +22,19 @@ const getReviews = asyncHandler(async (req, res) => {
     { customerName: { $regex: search, $options: 'i' } },
     { reviewText: { $regex: search, $options: 'i' } },
   ];
+  if (dateRange) {
+    const now = new Date();
+    if (dateRange === 'today') {
+      const start = new Date(now); start.setHours(0, 0, 0, 0);
+      query.createdAt = { $gte: start };
+    } else if (dateRange === 'week') {
+      const start = new Date(now); start.setDate(now.getDate() - 7);
+      query.createdAt = { $gte: start };
+    } else if (dateRange === 'month') {
+      const start = new Date(now); start.setDate(now.getDate() - 30);
+      query.createdAt = { $gte: start };
+    }
+  }
 
   const total = await Review.countDocuments(query);
   const reviews = await Review.find(query)

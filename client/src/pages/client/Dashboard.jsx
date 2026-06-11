@@ -1,54 +1,85 @@
 import { useQuery } from '@tanstack/react-query';
 import { customersAPI } from '@/api';
-import { PageHeader } from '@/components/PageHeader';
+import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Users, MessageCircle, Star, MessageSquare,
-  TrendingUp, BarChart3, ExternalLink,
+  TrendingUp, BarChart3, ArrowUpRight,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-/* ── single stat card ─────────────────────────────────────────── */
-function MetricCard({ icon: Icon, label, value, sub, color = 'text-primary', bg = 'bg-primary/10' }) {
+/* ── Time-based greeting ───────────────────────────────────────── */
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good Morning';
+  if (h < 17) return 'Good Afternoon';
+  return 'Good Evening';
+}
+
+/* ── Premium metric card ───────────────────────────────────────── */
+function MetricCard({ icon: Icon, label, value, sub, color, bg, trend }) {
   return (
-    <Card className="border-0 shadow-sm">
+    <Card className={cn(
+      'border-0 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group',
+    )}>
       <CardContent className="p-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{label}</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1 leading-none">{value}</p>
-            {sub && <p className="text-xs text-gray-400 mt-1.5">{sub}</p>}
+        <div className="flex items-start justify-between mb-3">
+          <div className={cn(
+            'h-11 w-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110',
+            bg,
+          )}>
+            <Icon className={cn('h-5 w-5', color)} />
           </div>
-          <div className={`h-10 w-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
-            <Icon className={`h-5 w-5 ${color}`} />
-          </div>
+          {trend !== undefined && (
+            <div className={cn(
+              'flex items-center gap-0.5 text-[11px] font-semibold px-2 py-0.5 rounded-full',
+              trend >= 0
+                ? 'bg-green-50 text-green-600'
+                : 'bg-red-50 text-red-500',
+            )}>
+              <ArrowUpRight className={cn('h-3 w-3', trend < 0 && 'rotate-90')} />
+              {Math.abs(trend)}%
+            </div>
+          )}
         </div>
+        <p className="text-[28px] font-bold text-gray-900 leading-none tracking-tight">{value}</p>
+        <p className="text-[13px] font-semibold text-gray-700 mt-1.5">{label}</p>
+        {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
       </CardContent>
     </Card>
   );
 }
 
-/* ── progress bar ─────────────────────────────────────────────── */
-function FunnelRow({ label, count, total, color }) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+/* ── Funnel step row ───────────────────────────────────────────── */
+function FunnelRow({ label, count, total, color, pctBase }) {
+  const base  = pctBase ?? total;
+  const pct   = base > 0 ? Math.round((count / base) * 100) : 0;
+  const ofAll = total > 0 ? Math.round((count / total) * 100) : 0;
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <div className="flex justify-between text-sm">
         <span className="text-gray-600 font-medium">{label}</span>
-        <span className="text-gray-900 font-bold">{count}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400 text-xs">{ofAll}% of total</span>
+          <span className="text-gray-900 font-bold tabular-nums">{count}</span>
+        </div>
       </div>
-      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-500 ${color}`}
-          style={{ width: `${pct}%` }}
+          className={cn('h-full rounded-full transition-all duration-700', color)}
+          style={{ width: `${ofAll}%` }}
         />
       </div>
-      <p className="text-[11px] text-gray-400 text-right">{pct}% of customers added</p>
     </div>
   );
 }
 
+/* ══════════════════════════════════════════════════════════════ */
 export default function ClientDashboard() {
+  const { user } = useAuth();
+  const businessName = user?.client?.businessName || 'Business';
+
   const { data, isLoading } = useQuery({
     queryKey: ['customer-analytics'],
     queryFn: () => customersAPI.getAnalytics().then((r) => r.data.data),
@@ -56,6 +87,7 @@ export default function ClientDashboard() {
 
   const d = data ?? {};
 
+  /* ── KPI config ──────────────────────────────────────────────── */
   const metrics = [
     {
       icon: Users,
@@ -77,7 +109,7 @@ export default function ClientDashboard() {
       icon: Star,
       label: 'Google Reviews',
       value: d.googleReviews ?? 0,
-      sub: '4★–5★ review submitted',
+      sub: '4★ – 5★ submitted',
       color: 'text-yellow-600',
       bg: 'bg-yellow-50',
     },
@@ -85,7 +117,7 @@ export default function ClientDashboard() {
       icon: MessageSquare,
       label: 'Private Feedback',
       value: d.privateFeedback ?? 0,
-      sub: '1★–3★ feedback received',
+      sub: '1★ – 3★ received',
       color: 'text-orange-600',
       bg: 'bg-orange-50',
     },
@@ -93,7 +125,7 @@ export default function ClientDashboard() {
       icon: BarChart3,
       label: 'Total Responses',
       value: d.totalResponses ?? 0,
-      sub: 'Google reviews + feedback',
+      sub: 'Reviews + feedback',
       color: 'text-blue-600',
       bg: 'bg-blue-50',
     },
@@ -107,49 +139,93 @@ export default function ClientDashboard() {
     },
   ];
 
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Dashboard" subtitle="Customer review journey overview" />
+  const hasData = (d.totalCustomers ?? 0) > 0;
 
-      {/* Metric grid */}
+  return (
+    <div className="space-y-7">
+
+      {/* ── Personalized greeting header ───────────────────────── */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-[26px] md:text-[30px] font-bold text-gray-900 leading-tight tracking-tight">
+            {getGreeting()}, {businessName} 👋
+          </h1>
+          <p className="text-[14px] text-gray-500 mt-1.5 leading-relaxed">
+            Manage reviews, feedback, customers, and your business reputation — all in one place.
+          </p>
+        </div>
+        {/* Quick status pill */}
+        {!isLoading && hasData && (
+          <div className="shrink-0 hidden sm:flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+            {d.conversionRate ?? 0}% conversion
+          </div>
+        )}
+      </div>
+
+      {/* ── KPI grid ───────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {isLoading
-          ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)
+          ? Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="border-0 shadow-sm">
+                <CardContent className="p-5">
+                  <Skeleton className="h-11 w-11 rounded-xl mb-3" />
+                  <Skeleton className="h-8 w-20 mb-2" />
+                  <Skeleton className="h-3.5 w-28" />
+                </CardContent>
+              </Card>
+            ))
           : metrics.map((m) => <MetricCard key={m.label} {...m} />)
         }
       </div>
 
-      {/* Funnel breakdown */}
+      {/* ── Customer Journey Funnel ─────────────────────────────── */}
       <Card className="border-0 shadow-sm">
         <CardContent className="p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Customer Journey Funnel</h2>
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="text-[15px] font-bold text-gray-900">Customer Journey Funnel</h2>
+              <p className="text-xs text-gray-400 mt-0.5">From first contact to review submission</p>
+            </div>
+            {hasData && (
+              <span className="text-xs text-gray-400 font-medium bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100">
+                {d.totalCustomers} customers
+              </span>
+            )}
+          </div>
           {isLoading ? (
-            <div className="space-y-4">
-              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-8" />)}
+            <div className="space-y-5">
+              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-9" />)}
+            </div>
+          ) : !hasData ? (
+            <div className="py-8 text-center space-y-2">
+              <Users className="h-9 w-9 text-gray-200 mx-auto" />
+              <p className="text-sm font-medium text-gray-400">No customers yet</p>
+              <p className="text-xs text-gray-300">Add customers and send WhatsApp review requests to see funnel data.</p>
             </div>
           ) : (
             <div className="space-y-4">
-              <FunnelRow label="Customers Added"      count={d.totalCustomers  ?? 0} total={d.totalCustomers ?? 1} color="bg-indigo-400" />
-              <FunnelRow label="WhatsApp Sent"        count={d.whatsappSent    ?? 0} total={d.totalCustomers ?? 1} color="bg-green-400" />
-              <FunnelRow label="Review Link Opened"   count={d.opened          ?? 0} total={d.totalCustomers ?? 1} color="bg-blue-400" />
-              <FunnelRow label="Google Review Submitted" count={d.googleReviews ?? 0} total={d.totalCustomers ?? 1} color="bg-yellow-400" />
-              <FunnelRow label="Private Feedback"     count={d.privateFeedback ?? 0} total={d.totalCustomers ?? 1} color="bg-orange-400" />
+              <FunnelRow label="Customers Added"        count={d.totalCustomers  ?? 0} total={d.totalCustomers ?? 1} color="bg-indigo-400" />
+              <FunnelRow label="WhatsApp Sent"          count={d.whatsappSent    ?? 0} total={d.totalCustomers ?? 1} color="bg-green-400" />
+              <FunnelRow label="Review Link Opened"     count={d.opened          ?? 0} total={d.totalCustomers ?? 1} color="bg-blue-400" />
+              <FunnelRow label="Google Review Submitted" count={d.googleReviews  ?? 0} total={d.totalCustomers ?? 1} color="bg-yellow-400" />
+              <FunnelRow label="Private Feedback Sent"  count={d.privateFeedback ?? 0} total={d.totalCustomers ?? 1} color="bg-orange-400" />
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Service breakdown */}
-      {(d.byService?.length > 0) && (
+      {/* ── Service performance table ───────────────────────────── */}
+      {(d.byService?.length ?? 0) > 0 && (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">Performance by Service</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <h2 className="text-[15px] font-bold text-gray-900 mb-4">Performance by Service</h2>
+            <div className="overflow-x-auto -mx-1">
+              <table className="w-full text-sm min-w-[480px]">
                 <thead>
-                  <tr className="border-b">
+                  <tr className="border-b border-gray-100">
                     {['Service', 'Customers', 'WA Sent', 'Google Reviews', 'Feedback', 'Conversion'].map((h) => (
-                      <th key={h} className="pb-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide pr-4 last:pr-0">
+                      <th key={h} className="pb-2.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider pr-4 last:pr-0">
                         {h}
                       </th>
                     ))}
@@ -157,18 +233,23 @@ export default function ClientDashboard() {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {d.byService.map((row) => (
-                    <tr key={row.service} className="hover:bg-gray-50/50">
-                      <td className="py-2.5 pr-4 font-medium text-gray-900 max-w-[160px] truncate">{row.service}</td>
-                      <td className="py-2.5 pr-4 text-gray-600">{row.total}</td>
-                      <td className="py-2.5 pr-4 text-gray-600">{row.waSent}</td>
-                      <td className="py-2.5 pr-4">
-                        <span className="text-green-700 font-medium">{row.googleReviews}</span>
+                    <tr key={row.service} className="hover:bg-gray-50/60 transition-colors group">
+                      <td className="py-3 pr-4 font-semibold text-gray-900 max-w-[160px] truncate">{row.service}</td>
+                      <td className="py-3 pr-4 text-gray-600 tabular-nums">{row.total}</td>
+                      <td className="py-3 pr-4 text-gray-600 tabular-nums">{row.waSent}</td>
+                      <td className="py-3 pr-4">
+                        <span className="text-green-700 font-semibold tabular-nums">{row.googleReviews}</span>
                       </td>
-                      <td className="py-2.5 pr-4">
-                        <span className="text-orange-700 font-medium">{row.feedback}</span>
+                      <td className="py-3 pr-4">
+                        <span className="text-orange-700 font-semibold tabular-nums">{row.feedback}</span>
                       </td>
-                      <td className="py-2.5">
-                        <span className={`font-semibold ${row.conversionRate >= 50 ? 'text-green-600' : row.conversionRate >= 25 ? 'text-yellow-600' : 'text-gray-500'}`}>
+                      <td className="py-3">
+                        <span className={cn(
+                          'font-bold tabular-nums',
+                          row.conversionRate >= 50 ? 'text-green-600'
+                          : row.conversionRate >= 25 ? 'text-yellow-600'
+                          : 'text-gray-400',
+                        )}>
                           {row.conversionRate}%
                         </span>
                       </td>
@@ -177,19 +258,6 @@ export default function ClientDashboard() {
                 </tbody>
               </table>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Quick actions hint */}
-      {!isLoading && (d.totalCustomers ?? 0) === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="py-10 text-center space-y-2">
-            <Users className="h-10 w-10 text-gray-300 mx-auto" />
-            <p className="font-medium text-gray-600">No customers yet</p>
-            <p className="text-sm text-gray-400">
-              Go to <strong>Customers</strong> to add your first customer and send a WhatsApp review request.
-            </p>
           </CardContent>
         </Card>
       )}

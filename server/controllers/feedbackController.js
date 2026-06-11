@@ -5,7 +5,7 @@ const Feedback = require('../models/Feedback');
 // @route   GET /api/feedback
 // @access  Private
 const getFeedback = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, status = '', search = '' } = req.query;
+  const { page = 1, limit = 20, status = '', search = '', rating = '', dateRange = '' } = req.query;
   const query = {};
 
   if (req.user.role === 'clientadmin') {
@@ -15,11 +15,25 @@ const getFeedback = asyncHandler(async (req, res) => {
   }
 
   if (status) query.status = status;
+  if (rating)  query.rating = parseInt(rating);
   if (search) query.$or = [
     { customerName: { $regex: search, $options: 'i' } },
     { feedback: { $regex: search, $options: 'i' } },
     { email: { $regex: search, $options: 'i' } },
   ];
+  if (dateRange) {
+    const now = new Date();
+    if (dateRange === 'today') {
+      const start = new Date(now); start.setHours(0, 0, 0, 0);
+      query.createdAt = { $gte: start };
+    } else if (dateRange === 'week') {
+      const start = new Date(now); start.setDate(now.getDate() - 7);
+      query.createdAt = { $gte: start };
+    } else if (dateRange === 'month') {
+      const start = new Date(now); start.setDate(now.getDate() - 30);
+      query.createdAt = { $gte: start };
+    }
+  }
 
   const total = await Feedback.countDocuments(query);
   const feedbacks = await Feedback.find(query)

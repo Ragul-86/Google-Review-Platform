@@ -147,6 +147,7 @@ export default function ClientReviews() {
   const qc = useQueryClient();
   const [tab, setTab]           = useState('google');   // 'google' | 'feedback'
   const [ratingFilter, setRF]   = useState(0);          // 0 = all
+  const [dateRange, setDateRange] = useState('');       // '' | 'today' | 'week' | 'month'
   const [googlePage, setGP]     = useState(1);
   const [feedbackPage, setFP]   = useState(1);
 
@@ -160,10 +161,11 @@ export default function ClientReviews() {
 
   /* ── Google Reviews ─────────────────────────────────────────── */
   const { data: gData, isLoading: gLoading } = useQuery({
-    queryKey: ['client-google-reviews', ratingFilter, googlePage],
+    queryKey: ['client-google-reviews', ratingFilter, dateRange, googlePage],
     queryFn: () => reviewsAPI.getAll({
       type: 'positive',
       rating: ratingFilter || undefined,
+      dateRange: dateRange || undefined,
       page: googlePage,
       limit: 15,
     }).then((r) => r.data),
@@ -172,9 +174,10 @@ export default function ClientReviews() {
 
   /* ── Private Feedback ───────────────────────────────────────── */
   const { data: fData, isLoading: fLoading } = useQuery({
-    queryKey: ['client-feedback', ratingFilter, feedbackPage],
+    queryKey: ['client-feedback-reviews', ratingFilter, dateRange, feedbackPage],
     queryFn: () => feedbackAPI.getAll({
       rating: ratingFilter || undefined,
+      dateRange: dateRange || undefined,
       page: feedbackPage,
       limit: 15,
     }).then((r) => r.data),
@@ -196,6 +199,13 @@ export default function ClientReviews() {
   function switchTab(t) {
     setTab(t);
     setRF(0);
+    setDateRange('');
+    setGP(1);
+    setFP(1);
+  }
+
+  function resetPage() {
+    tab === 'google' ? setGP(1) : setFP(1);
   }
 
   const googleReviews = gData?.data ?? [];
@@ -269,25 +279,52 @@ export default function ClientReviews() {
         ))}
       </div>
 
-      {/* ── Rating filter chips ───────────────────────────────── */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-gray-400 font-medium">Filter:</span>
-        {(tab === 'google' ? googleFilters : feedbackFilters).map((r) => (
-          <button
-            key={r}
-            onClick={() => { setRF(r); tab === 'google' ? setGP(1) : setFP(1); }}
-            className={cn(
-              'flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-all',
-              ratingFilter === r
-                ? 'bg-gray-900 text-white border-gray-900'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400',
-            )}
-          >
-            {r === 0 ? 'All ratings' : (
-              <><Star className="h-3 w-3 fill-yellow-400 text-yellow-400" /> {r}★</>
-            )}
-          </button>
-        ))}
+      {/* ── Filters row ───────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-3">
+        {/* Rating chips */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide">Rating:</span>
+          {(tab === 'google' ? googleFilters : feedbackFilters).map((r) => (
+            <button
+              key={r}
+              onClick={() => { setRF(r); resetPage(); }}
+              className={cn(
+                'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all',
+                ratingFilter === r
+                  ? 'bg-gray-900 text-white border-gray-900'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400',
+              )}
+            >
+              {r === 0 ? 'All' : (
+                <><Star className="h-3 w-3 fill-yellow-400 text-yellow-400" /> {r}★</>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Date chips */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide">Period:</span>
+          {[
+            { key: '',       label: 'All time' },
+            { key: 'today',  label: 'Today' },
+            { key: 'week',   label: 'This Week' },
+            { key: 'month',  label: 'This Month' },
+          ].map((d) => (
+            <button
+              key={d.key}
+              onClick={() => { setDateRange(d.key); resetPage(); }}
+              className={cn(
+                'px-2.5 py-1 rounded-full text-xs font-medium border transition-all',
+                dateRange === d.key
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400',
+              )}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════ */}
