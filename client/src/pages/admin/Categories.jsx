@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { clientsAPI } from '@/api';
-import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Building2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -78,19 +78,25 @@ const CATEGORY_TEMPLATES = {
 };
 
 export default function AdminCategories() {
-  const { data } = useQuery({
-    queryKey: ['clients'],
-    queryFn: () => clientsAPI.getAll().then((r) => r.data.data ?? []),
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-categories-clients'],
+    queryFn: () => clientsAPI.getAll().then((r) => {
+      const raw = r.data.data ?? r.data;
+      return Array.isArray(raw) ? raw : (raw.clients ?? raw.data ?? []);
+    }),
+    staleTime: 30_000,
   });
 
   const clients = data ?? [];
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Category Templates"
-        subtitle="Default categories seeded per business type. Edit per-client in Clients → Edit."
-      />
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Category Templates</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Default categories seeded per business type. Edit per-client in Clients → Edit.
+        </p>
+      </div>
 
       <div className="grid md:grid-cols-2 gap-4">
         {Object.entries(CATEGORY_TEMPLATES).map(([type, labels]) => (
@@ -109,23 +115,30 @@ export default function AdminCategories() {
 
       <div>
         <h2 className="text-lg font-semibold mb-3">Per-client categories</h2>
-        {clients.length === 0 && <p className="text-sm text-muted-foreground">No clients yet.</p>}
-        <div className="grid md:grid-cols-2 gap-3">
-          {clients.map((c) => (
-            <Card key={c._id}>
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium text-sm">{c.businessName}</p>
-                    <p className="text-xs text-muted-foreground">{c.businessCategory}</p>
+        {isLoading ? (
+          <div className="grid md:grid-cols-2 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+          </div>
+        ) : clients.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No clients yet.</p>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-3">
+            {clients.map((c) => (
+              <Card key={c._id}>
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-sm">{c.businessName}</p>
+                      <p className="text-xs text-muted-foreground">{c.businessCategory}</p>
+                    </div>
                   </div>
-                </div>
-                <Link to="/admin/clients" className="text-xs text-primary underline">Edit</Link>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  <Link to="/admin/clients" className="text-xs text-primary underline">Edit</Link>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

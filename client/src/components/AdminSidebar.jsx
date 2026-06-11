@@ -38,8 +38,8 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
     'transition-colors duration-150 select-none cursor-pointer h-[50px]',
   );
 
-  const itemActive   = 'bg-white/10 text-white font-semibold';
-  const itemInactive = 'text-sidebar-foreground/60 hover:text-white hover:bg-white/8';
+  const itemActive   = 'bg-white/[0.18] text-white font-semibold';
+  const itemInactive = 'text-sidebar-foreground/60 hover:text-white hover:bg-white/[0.08]';
 
   const collapsedBase = 'md:justify-center md:px-0 md:mx-auto md:w-10';
 
@@ -120,10 +120,10 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
                       <item.icon
                         className={cn(
                           'shrink-0 transition-colors',
-                          isActive ? 'text-primary' : 'text-sidebar-foreground/50',
+                          isActive ? 'text-white' : 'text-sidebar-foreground/50',
                         )}
                         size={20}
-                        strokeWidth={isActive ? 2 : 1.75}
+                        strokeWidth={isActive ? 2.2 : 1.75}
                       />
                       <span className={cn('truncate leading-none', collapsed && 'md:hidden')}>
                         {item.label}
