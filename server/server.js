@@ -22,8 +22,25 @@ const customerRoutes          = require('./routes/customers');
 const whatsappTemplateRoutes  = require('./routes/whatsappTemplates');
 const serviceRoutes           = require('./routes/services');
 
-// Connect DB
-connectDB();
+// Connect DB then auto-seed superadmin if none exists
+connectDB().then(async () => {
+  try {
+    const User = require('./models/User');
+    const count = await User.countDocuments({ role: 'superadmin' });
+    if (count === 0) {
+      await User.create({
+        name: 'Super Admin',
+        email: 'admin@platform.com',
+        password: 'Admin@1234',
+        role: 'superadmin',
+        isActive: true,
+      });
+      console.log('✅ Super admin auto-created → admin@platform.com / Admin@1234');
+    }
+  } catch (e) {
+    console.error('Auto-seed error (non-fatal):', e.message);
+  }
+});
 
 const app = express();
 
