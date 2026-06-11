@@ -33,7 +33,8 @@ function buildAISuggestions(customer, client) {
   const name    = customer?.name                                         || 'Customer';
   const biz     = client?.businessName                                   || 'our business';
   const purpose = customer?.serviceName || customer?.purposeOfVisit || 'your recent visit';
-  const link    = `${window.location.origin}/review/${client?.slug || ''}`;
+  const base    = `${window.location.origin}/review/${client?.slug || ''}`;
+  const link    = customer?._id ? `${base}?c=${customer._id}` : base;
 
   return [
     {

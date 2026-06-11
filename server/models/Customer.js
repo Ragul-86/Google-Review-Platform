@@ -30,11 +30,16 @@ const customerSchema = new mongoose.Schema(
     },
     reviewStatus: {
       type: String,
-      enum: ['pending', 'submitted'],
+      // pending        → WA sent, no action yet
+      // opened         → customer opened the review link
+      // google_submitted  → customer clicked Copy (positive 4★/5★ flow)
+      // feedback_submitted → customer submitted private feedback (1★-3★ flow)
+      enum: ['pending', 'opened', 'google_submitted', 'feedback_submitted'],
       default: 'pending',
     },
 
     whatsappSentAt:    { type: Date },
+    reviewOpenedAt:    { type: Date },   // set when customer opens review page
     reviewClickedAt:   { type: Date },
     reviewSubmittedAt: { type: Date },
   },

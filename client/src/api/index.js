@@ -114,4 +114,6 @@ export const customersAPI = {
 // ─── Public ──────────────────────────────────────────────────────────────────
 export const publicAPI = {
   getClientBySlug: (slug) => API.get(`/public/client/${slug}`),
+  // Track customer review journey from public review page (no auth)
+  trackCustomer: (id, status) => API.patch(`/public/customer/${id}/track`, { status }),
 };

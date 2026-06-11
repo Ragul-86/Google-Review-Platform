@@ -119,6 +119,36 @@ app.use('/api/customers',          customerRoutes);
 app.use('/api/whatsapp-templates', whatsappTemplateRoutes);
 app.use('/api/services',           serviceRoutes);
 
+// Public: Track customer review journey (called from review page — no auth needed)
+app.patch('/api/public/customer/:id/track', require('express-async-handler')(async (req, res) => {
+  const { status } = req.body;
+  const VALID    = ['opened', 'google_submitted', 'feedback_submitted'];
+  const TERMINAL = ['google_submitted', 'feedback_submitted'];
+
+  if (!VALID.includes(status)) {
+    return res.status(400).json({ success: false, message: 'Invalid status' });
+  }
+
+  const Customer = require('./models/Customer');
+  const customer = await Customer.findById(req.params.id);
+  if (!customer) return res.json({ success: true }); // silent — don't expose existence
+
+  // Only advance; never regress
+  if (!TERMINAL.includes(customer.reviewStatus)) {
+    const now = new Date();
+    if (status === 'opened' && customer.reviewStatus === 'pending') {
+      customer.reviewStatus   = 'opened';
+      customer.reviewOpenedAt = now;
+    } else if (TERMINAL.includes(status)) {
+      customer.reviewStatus      = status;
+      customer.reviewSubmittedAt = now;
+    }
+    await customer.save();
+  }
+
+  res.json({ success: true });
+}));
+
 // Public: Get client by slug (for review page — includes categories + active services)
 app.get('/api/public/client/:slug', require('express-async-handler')(async (req, res) => {
   const Client   = require('./models/Client');

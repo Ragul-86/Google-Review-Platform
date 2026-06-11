@@ -141,25 +141,33 @@ const getCustomerAnalytics = asyncHandler(async (req, res) => {
   const cId = getClientId(req);
   if (!cId) { res.status(400); throw new Error('clientId required'); }
 
-  const [total, sent, submitted] = await Promise.all([
+  const [total, sent, googleSubmitted, feedbackSubmitted, opened] = await Promise.all([
     Customer.countDocuments({ clientId: cId }),
     Customer.countDocuments({ clientId: cId, whatsappStatus: { $in: ['sent', 'clicked', 'reviewed'] } }),
-    Customer.countDocuments({ clientId: cId, reviewStatus: 'submitted' }),
+    Customer.countDocuments({ clientId: cId, reviewStatus: 'google_submitted' }),
+    Customer.countDocuments({ clientId: cId, reviewStatus: 'feedback_submitted' }),
+    Customer.countDocuments({ clientId: cId, reviewStatus: 'opened' }),
   ]);
 
-  const conversionRate = total > 0 ? Math.round((submitted / total) * 100) : 0;
+  const totalResponses = googleSubmitted + feedbackSubmitted;
+  // Conversion = responses / WA sent (not / total customers)
+  const conversionRate = sent > 0 ? Math.round((totalResponses / sent) * 100) : 0;
 
-  // Service breakdown — group by serviceName, count total & reviews submitted
+  // Service breakdown
+  const ObjectId = mongoose.Types.ObjectId;
+  const clientOid = ObjectId.createFromHexString
+    ? ObjectId.createFromHexString(String(cId))
+    : new ObjectId(String(cId));
+
   const serviceBreakdownRaw = await Customer.aggregate([
-    { $match: { clientId: require('mongoose').Types.ObjectId.createFromHexString
-        ? require('mongoose').Types.ObjectId.createFromHexString(String(cId))
-        : new (require('mongoose').Types.ObjectId)(String(cId)) } },
+    { $match: { clientId: clientOid } },
     {
       $group: {
-        _id:       { $ifNull: ['$serviceName', '$purposeOfVisit'] },
-        total:     { $sum: 1 },
-        reviewed:  { $sum: { $cond: [{ $eq: ['$reviewStatus', 'submitted'] }, 1, 0] } },
-        waSent:    { $sum: { $cond: [{ $in: ['$whatsappStatus', ['sent', 'clicked', 'reviewed']] }, 1, 0] } },
+        _id:      { $ifNull: ['$serviceName', '$purposeOfVisit'] },
+        total:    { $sum: 1 },
+        googleReviews:  { $sum: { $cond: [{ $eq: ['$reviewStatus', 'google_submitted'] },   1, 0] } },
+        feedback:       { $sum: { $cond: [{ $eq: ['$reviewStatus', 'feedback_submitted'] }, 1, 0] } },
+        waSent:   { $sum: { $cond: [{ $in: ['$whatsappStatus', ['sent', 'clicked', 'reviewed']] }, 1, 0] } },
       },
     },
     { $match: { _id: { $ne: null, $ne: '' } } },
@@ -167,21 +175,29 @@ const getCustomerAnalytics = asyncHandler(async (req, res) => {
     { $limit: 20 },
   ]);
 
-  const byService = serviceBreakdownRaw.map((row) => ({
-    service:         row._id || 'Unknown',
-    total:           row.total,
-    reviewed:        row.reviewed,
-    waSent:          row.waSent,
-    conversionRate:  row.total > 0 ? Math.round((row.reviewed / row.total) * 100) : 0,
-  }));
+  const byService = serviceBreakdownRaw.map((row) => {
+    const responses = row.googleReviews + row.feedback;
+    return {
+      service:        row._id || 'Unknown',
+      total:          row.total,
+      googleReviews:  row.googleReviews,
+      feedback:       row.feedback,
+      responses,
+      waSent:         row.waSent,
+      conversionRate: row.waSent > 0 ? Math.round((responses / row.waSent) * 100) : 0,
+    };
+  });
 
   res.json({
     success: true,
     data: {
-      totalCustomers: total,
-      whatsappSent:   sent,
-      reviewsSubmitted: submitted,
+      totalCustomers:   total,
+      whatsappSent:     sent,
+      googleReviews:    googleSubmitted,
+      privateFeedback:  feedbackSubmitted,
+      totalResponses,
       conversionRate,
+      opened,
       byService,
     },
   });

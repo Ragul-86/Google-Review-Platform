@@ -39,8 +39,12 @@ const WA_BADGE = {
 };
 
 const REV_BADGE = {
-  pending:   { label: 'Pending',   color: 'bg-gray-100 text-gray-500' },
-  submitted: { label: 'Submitted', color: 'bg-green-100 text-green-700' },
+  pending:            { label: '🟡 Pending',          color: 'bg-yellow-50 text-yellow-700 border border-yellow-200' },
+  opened:             { label: '🔵 Opened',            color: 'bg-blue-50   text-blue-700   border border-blue-200'   },
+  google_submitted:   { label: '🟢 Google Review',     color: 'bg-green-50  text-green-700  border border-green-200'  },
+  feedback_submitted: { label: '🟠 Feedback Sent',     color: 'bg-orange-50 text-orange-700 border border-orange-200' },
+  // legacy compat
+  submitted:          { label: '🟢 Submitted',         color: 'bg-green-50  text-green-700  border border-green-200'  },
 };
 
 /* ─────────────────────────────────────────────────────────────

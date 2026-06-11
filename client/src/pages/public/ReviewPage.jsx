@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { publicAPI, reviewsAPI } from '@/api';
@@ -86,7 +86,8 @@ export default function ReviewPage() {
   const [email, setEmail]     = useState('');
   const [message, setMessage] = useState('');
 
-  const qrToken = new URLSearchParams(window.location.search).get('qr');
+  const qrToken    = new URLSearchParams(window.location.search).get('qr');
+  const customerId = new URLSearchParams(window.location.search).get('c');  // customer tracking token
 
   /* ── Data fetch ─────────────────────────────────────────── */
   const { data, isLoading, isError } = useQuery({
@@ -94,6 +95,14 @@ export default function ReviewPage() {
     queryFn:  () => publicAPI.getClientBySlug(slug).then((r) => r.data.data),
     retry: false,
   });
+
+  /* ── Track "opened" once when review page loads successfully ── */
+  const trackedOpen = useRef(false);
+  useEffect(() => {
+    if (!customerId || !data?.client || trackedOpen.current) return;
+    trackedOpen.current = true;
+    publicAPI.trackCustomer(customerId, 'opened').catch(() => {});
+  }, [customerId, data?.client?._id]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Loading / Error ────────────────────────────────────── */
   if (isLoading) {
@@ -223,6 +232,11 @@ export default function ReviewPage() {
     setCopiedIdx(idx);
     setGoogleLink(rawUrl);    // always use the validated URL, not server response
 
+    // Track google_submitted — fire and forget
+    if (customerId) {
+      publicAPI.trackCustomer(customerId, 'google_submitted').catch(() => {});
+    }
+
     // ⑤ Open the real URL directly — NEVER pre-open blank tabs
     let opened = false;
     try {
@@ -253,6 +267,10 @@ export default function ReviewPage() {
         customerName: name, customerPhone: contact,
         customerEmail: email, message, qrToken,
       });
+      // Track feedback_submitted — fire and forget
+      if (customerId) {
+        publicAPI.trackCustomer(customerId, 'feedback_submitted').catch(() => {});
+      }
       setStep('thanks');
     } catch {
       toast.error('Could not submit feedback');

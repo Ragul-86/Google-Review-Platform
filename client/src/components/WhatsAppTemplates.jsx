@@ -46,7 +46,8 @@ const EMPTY = { name: '', type: 'review_request', content: '', isDefault: false 
 /* ── Variable replacement ───────────────────────────────────── */
 export function fillTemplate(content, customer, client) {
   if (!content) return '';
-  const reviewLink = `${window.location.origin}/review/${client?.slug || ''}`;
+  const base       = `${window.location.origin}/review/${client?.slug || ''}`;
+  const reviewLink = customer?._id ? `${base}?c=${customer._id}` : base;
   return content
     .replace(/\{\{CustomerName\}\}/g,   customer?.name           || 'Customer')
     .replace(/\{\{BusinessName\}\}/g,   client?.businessName     || 'Business')
