@@ -1,4 +1,5 @@
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const Customer = require('../models/Customer');
 
 /* ── helpers ───────────────────────────────────────────────────── */
@@ -144,7 +145,8 @@ const getCustomerAnalytics = asyncHandler(async (req, res) => {
   const [total, sent, googleSubmitted, feedbackSubmitted, opened] = await Promise.all([
     Customer.countDocuments({ clientId: cId }),
     Customer.countDocuments({ clientId: cId, whatsappStatus: { $in: ['sent', 'clicked', 'reviewed'] } }),
-    Customer.countDocuments({ clientId: cId, reviewStatus: 'google_submitted' }),
+    // Count both new 'google_submitted' AND legacy 'submitted' values
+    Customer.countDocuments({ clientId: cId, reviewStatus: { $in: ['google_submitted', 'submitted'] } }),
     Customer.countDocuments({ clientId: cId, reviewStatus: 'feedback_submitted' }),
     Customer.countDocuments({ clientId: cId, reviewStatus: 'opened' }),
   ]);
@@ -165,7 +167,7 @@ const getCustomerAnalytics = asyncHandler(async (req, res) => {
       $group: {
         _id:      { $ifNull: ['$serviceName', '$purposeOfVisit'] },
         total:    { $sum: 1 },
-        googleReviews:  { $sum: { $cond: [{ $eq: ['$reviewStatus', 'google_submitted'] },   1, 0] } },
+        googleReviews:  { $sum: { $cond: [{ $in: ['$reviewStatus', ['google_submitted', 'submitted']] }, 1, 0] } },
         feedback:       { $sum: { $cond: [{ $eq: ['$reviewStatus', 'feedback_submitted'] }, 1, 0] } },
         waSent:   { $sum: { $cond: [{ $in: ['$whatsappStatus', ['sent', 'clicked', 'reviewed']] }, 1, 0] } },
       },

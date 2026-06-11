@@ -393,7 +393,7 @@ export default function ClientCustomers() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard icon={UserCheck}  label="Customers Added"   value={stats?.totalCustomers   ?? 0}     color="bg-blue-500" />
         <StatCard icon={Send}       label="WhatsApp Sent"     value={stats?.whatsappSent     ?? 0}     color="bg-green-500" />
-        <StatCard icon={Star}       label="Reviews Submitted" value={stats?.reviewsSubmitted ?? 0}     color="bg-yellow-500" />
+        <StatCard icon={Star}       label="Google Reviews"    value={stats?.googleReviews ?? stats?.reviewsSubmitted ?? 0} color="bg-yellow-500" />
         <StatCard icon={TrendingUp} label="Conversion Rate"   value={`${stats?.conversionRate ?? 0}%`} color="bg-purple-500" />
       </div>
 

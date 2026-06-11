@@ -52,7 +52,6 @@ export default function ClientDashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ['customer-analytics'],
     queryFn: () => customersAPI.getAnalytics().then((r) => r.data.data),
-    staleTime: 60_000,
   });
 
   const d = data ?? {};
