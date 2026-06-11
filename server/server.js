@@ -30,12 +30,24 @@ const app = express();
 // Security headers
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
-// CORS
+// CORS — CLIENT_URL supports comma-separated list for multiple origins
+const allowedOrigins = [
+  ...(process.env.CLIENT_URL
+    ? process.env.CLIENT_URL.split(',').map((u) => u.trim())
+    : ['http://localhost:5173']),
+  'http://localhost:3000',
+  'http://localhost:5173',
+];
 app.use(cors({
-  origin: [
-    process.env.CLIENT_URL || 'http://localhost:5173',
-    'http://localhost:3000',
-  ],
+  origin: (origin, cb) => {
+    // Allow requests with no origin (mobile apps, curl, Render health checks)
+    if (!origin) return cb(null, true);
+    if (
+      allowedOrigins.includes(origin) ||
+      /\.vercel\.app$/.test(origin)       // allow all *.vercel.app previews
+    ) return cb(null, true);
+    cb(new Error(`CORS blocked: ${origin}`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
