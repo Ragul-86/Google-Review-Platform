@@ -247,7 +247,7 @@ export default function ClientServices() {
                   <button
                     title="Delete service"
                     onClick={() => {
-                      if (window.confirm(`Delete "${svc.name}"?`)) deleteMut.mutate(svc._id);
+                      toast(`Delete "${svc.name}"?`, { description: 'This cannot be undone.', action: { label: 'Delete', onClick: () => deleteMut.mutate(svc._id) }, cancel: { label: 'Cancel', onClick: () => {} }, duration: 8000 });
                     }}
                     className="h-8 w-8 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-500 transition-colors"
                   >

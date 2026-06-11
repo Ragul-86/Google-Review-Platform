@@ -40,16 +40,16 @@ export function ClientSidebar({ collapsed, mobileOpen, onClose }) {
 
   /* ─── shared item style ──────────────────────────────────────────── */
   const itemBase = cn(
-    'relative flex items-center gap-3.5 w-full rounded-lg text-[13.5px] font-medium',
-    'transition-colors duration-150 select-none cursor-pointer',
-    'h-[50px]',
+    'relative flex items-center gap-3 w-full rounded-lg text-[15px] font-medium',
+    'transition-all duration-150 select-none cursor-pointer',
+    'h-[48px]',
   );
 
-  const itemActive   = 'bg-primary/[0.08] text-primary font-semibold';
-  const itemInactive = 'text-gray-500 hover:text-gray-900 hover:bg-gray-50';
+  const itemActive   = 'bg-gray-50 text-gray-900 font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.06)]';
+  const itemInactive = 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/70';
 
   /* ─── collapsed icon-only wrapper ───────────────────────────────── */
-  const collapsedBase = 'md:justify-center md:px-0 md:mx-auto md:w-10';
+  const collapsedBase = 'md:justify-center md:px-0 md:mx-auto md:w-11';
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -70,9 +70,9 @@ export function ClientSidebar({ collapsed, mobileOpen, onClose }) {
           'transition-all duration-300 ease-in-out',
           /* desktop — stay in flex flow */
           'md:relative md:z-auto md:translate-x-0',
-          collapsed ? 'md:w-[72px]' : 'md:w-[250px]',
+          collapsed ? 'md:w-[72px]' : 'md:w-[280px]',
           /* mobile drawer */
-          'w-[250px]',
+          'w-[280px]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         )}
       >
@@ -106,15 +106,15 @@ export function ClientSidebar({ collapsed, mobileOpen, onClose }) {
 
           {/* Name + subtitle — hidden on desktop collapsed */}
           <div className={cn('min-w-0 flex-1 overflow-hidden', collapsed && 'md:hidden')}>
-            <p className="font-bold text-gray-900 text-[15px] leading-tight truncate">
+            <p className="font-bold text-gray-900 text-[15px] leading-tight break-words line-clamp-2">
               {client?.businessName || 'My Business'}
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">Business Dashboard</p>
+            <p className="text-[12px] text-gray-400 mt-0.5">Business Dashboard</p>
           </div>
         </div>
 
         {/* ── Navigation ────────────────────────────────── */}
-        <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
           {NAV.map((item) => {
             const isActive = active(item.to);
             return (
@@ -126,7 +126,7 @@ export function ClientSidebar({ collapsed, mobileOpen, onClose }) {
                     {isActive && (
                       <span
                         className={cn(
-                          'absolute left-0 top-[8px] bottom-[8px] w-[3px] bg-primary rounded-r-full',
+                          'absolute left-0 top-[7px] bottom-[7px] w-[3px] bg-primary rounded-r-full',
                           collapsed && 'md:hidden',
                         )}
                       />
@@ -146,10 +146,10 @@ export function ClientSidebar({ collapsed, mobileOpen, onClose }) {
                       <item.icon
                         className={cn(
                           'shrink-0 transition-colors',
-                          isActive ? 'text-primary' : 'text-gray-400 group-hover:text-gray-700',
+                          isActive ? 'text-gray-900' : 'text-gray-400',
                         )}
                         size={20}
-                        strokeWidth={isActive ? 2 : 1.75}
+                        strokeWidth={isActive ? 2.2 : 1.75}
                       />
                       <span className={cn('truncate leading-none', collapsed && 'md:hidden')}>
                         {item.label}

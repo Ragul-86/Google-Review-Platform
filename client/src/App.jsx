@@ -104,7 +104,7 @@ export default function App() {
               } />
             </Routes>
           </BrowserRouter>
-          <Toaster richColors position="top-right" />
+          <Toaster richColors position="top-right" duration={3000} closeButton toastOptions={{ style: { fontSize: '14px' } }} />
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

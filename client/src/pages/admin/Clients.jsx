@@ -318,7 +318,14 @@ export default function AdminClients() {
                         <TooltipTrigger asChild>
                           <Button
                             variant="outline" size="sm"
-                            onClick={() => { if (window.confirm(`Reset password for ${b.businessName}?`)) resetPwdMut.mutate(b._id); }}
+                            onClick={() => {
+                              toast(`Reset password for ${b.businessName}?`, {
+                                description: 'A new temporary password will be sent.',
+                                action: { label: 'Yes, Reset', onClick: () => resetPwdMut.mutate(b._id) },
+                                cancel: { label: 'Cancel', onClick: () => {} },
+                                duration: 8000,
+                              });
+                            }}
                             disabled={resetPwdMut.isPending}
                           >
                             <KeyRound className="h-4 w-4" />
@@ -338,7 +345,14 @@ export default function AdminClients() {
                         <TooltipTrigger asChild>
                           <Button
                             variant="outline" size="sm"
-                            onClick={() => { if (window.confirm('Delete this business and all its data?')) deleteMut.mutate(b._id); }}
+                            onClick={() => {
+                              toast(`Delete ${b.businessName}?`, {
+                                description: 'This will permanently delete the business and all its data.',
+                                action: { label: 'Yes, Delete', onClick: () => deleteMut.mutate(b._id) },
+                                cancel: { label: 'Cancel', onClick: () => {} },
+                                duration: 8000,
+                              });
+                            }}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

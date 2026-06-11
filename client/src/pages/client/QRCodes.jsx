@@ -124,7 +124,7 @@ export default function ClientQRCodes() {
                     </div>
                     <Button
                       variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => { if (window.confirm(`Delete "${qr.title}"?`)) deleteMut.mutate(qr._id); }}
+                      onClick={() => { toast(`Delete "${qr.title}"?`, { description: 'This cannot be undone.', action: { label: 'Delete', onClick: () => deleteMut.mutate(qr._id) }, cancel: { label: 'Cancel', onClick: () => {} }, duration: 8000 }); }}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

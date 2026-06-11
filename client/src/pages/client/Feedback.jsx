@@ -107,7 +107,7 @@ export default function ClientFeedback() {
                     </Select>
                     <Button
                       variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => { if (window.confirm('Delete?')) deleteMut.mutate(f._id); }}
+                      onClick={() => { toast('Delete this feedback?', { description: 'This cannot be undone.', action: { label: 'Delete', onClick: () => deleteMut.mutate(f._id) }, cancel: { label: 'Cancel', onClick: () => {} }, duration: 8000 }); }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>

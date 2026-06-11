@@ -34,11 +34,11 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
   }
 
   const itemBase = cn(
-    'relative flex items-center gap-3.5 w-full rounded-lg text-[13.5px]',
+    'relative flex items-center gap-3 w-full rounded-lg text-[15px]',
     'transition-all duration-150 select-none cursor-pointer h-[48px]',
   );
 
-  const collapsedBase = 'md:justify-center md:px-0 md:mx-auto md:w-10';
+  const collapsedBase = 'md:justify-center md:px-0 md:mx-auto md:w-11';
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -58,8 +58,8 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
           'bg-white border-r border-gray-200 overflow-hidden shrink-0',
           'transition-all duration-300 ease-in-out',
           'md:relative md:z-auto md:translate-x-0',
-          collapsed ? 'md:w-[72px]' : 'md:w-[250px]',
-          'w-[250px]',
+          collapsed ? 'md:w-[72px]' : 'md:w-[280px]',
+          'w-[280px]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         )}
       >
@@ -77,13 +77,13 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
             <Zap size={18} className="text-white" strokeWidth={2.5} />
           </div>
           <div className={cn('min-w-0 flex-1 overflow-hidden', collapsed && 'md:hidden')}>
-            <p className="font-bold text-gray-900 text-[14.5px] leading-tight">Review Boost</p>
-            <p className="text-[11px] text-gray-400 mt-0.5 font-medium">Super Admin</p>
+            <p className="font-bold text-gray-900 text-[16px] leading-tight whitespace-nowrap">Review Boost</p>
+            <p className="text-[12px] text-gray-400 mt-0.5 font-medium">Super Admin</p>
           </div>
         </div>
 
         {/* ── Navigation ──────────────────────────────────── */}
-        <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
           {NAV.map((item) => {
             const isActive = active(item.to);
             return (
@@ -121,7 +121,7 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
                           'shrink-0 transition-colors',
                           isActive ? 'text-gray-900' : 'text-gray-400',
                         )}
-                        size={19}
+                        size={20}
                         strokeWidth={isActive ? 2.2 : 1.75}
                       />
                       <span className={cn('truncate leading-none', collapsed && 'md:hidden')}>
@@ -152,7 +152,7 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
                   collapsed && collapsedBase,
                 )}
               >
-                <LogOut className="shrink-0" size={19} strokeWidth={1.75} />
+                <LogOut className="shrink-0" size={20} strokeWidth={1.75} />
                 <span className={cn('truncate', collapsed && 'md:hidden')}>Logout</span>
               </button>
             </TooltipTrigger>

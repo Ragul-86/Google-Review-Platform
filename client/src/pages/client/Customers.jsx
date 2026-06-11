@@ -512,7 +512,7 @@ export default function ClientCustomers() {
                           </button>
                           <button
                             title="Delete customer"
-                            onClick={() => { if (window.confirm(`Delete ${c.name}?`)) deleteMut.mutate(c._id); }}
+                            onClick={() => { toast(`Delete ${c.name}?`, { description: 'This cannot be undone.', action: { label: 'Delete', onClick: () => deleteMut.mutate(c._id) }, cancel: { label: 'Cancel', onClick: () => {} }, duration: 8000 }); }}
                             className="h-8 w-8 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-500 transition-colors"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -552,7 +552,7 @@ export default function ClientCustomers() {
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => { if (window.confirm(`Delete ${c.name}?`)) deleteMut.mutate(c._id); }}
+                          onClick={() => { toast(`Delete ${c.name}?`, { description: 'This cannot be undone.', action: { label: 'Delete', onClick: () => deleteMut.mutate(c._id) }, cancel: { label: 'Cancel', onClick: () => {} }, duration: 8000 }); }}
                           className="h-8 w-8 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-500"
                         >
                           <Trash2 className="h-4 w-4" />

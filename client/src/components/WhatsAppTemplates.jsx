@@ -447,7 +447,7 @@ export default function WhatsAppTemplates() {
                       className="h-8 w-8 rounded-lg bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors">
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button title="Delete" onClick={() => { if (window.confirm(`Delete "${tpl.name}"?`)) deleteMut.mutate(tpl._id); }}
+                    <button title="Delete" onClick={() => { toast(`Delete "${tpl.name}"?`, { description: 'This cannot be undone.', action: { label: 'Delete', onClick: () => deleteMut.mutate(tpl._id) }, cancel: { label: 'Cancel', onClick: () => {} }, duration: 8000 }); }}
                       className="h-8 w-8 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-500 transition-colors">
                       <Trash2 className="h-4 w-4" />
                     </button>

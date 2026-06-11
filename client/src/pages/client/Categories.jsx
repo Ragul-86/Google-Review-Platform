@@ -46,7 +46,10 @@ export default function ClientCategories() {
 
   /* ── Add ────────────────────────────────────────────────────── */
   async function handleAdd() {
-    if (!newLabel.trim()) return;
+    if (!newLabel.trim()) {
+      toast.error('Please enter a category name');
+      return;
+    }
     setAdding(true);
     try {
       await categoriesAPI.create({ name: newLabel.trim() });
@@ -60,11 +63,14 @@ export default function ClientCategories() {
     }
   }
 
-  /* ── Delete with confirmation ────────────────────────────────── */
+  /* ── Delete with sonner confirmation ────────────────────────── */
   function handleDelete(cat) {
-    if (window.confirm(`Delete "${cat.name}"?\n\nThis cannot be undone.`)) {
-      deleteMut.mutate(cat._id);
-    }
+    toast(`Delete "${cat.name}"?`, {
+      description: 'This action cannot be undone.',
+      action:  { label: 'Yes, Delete', onClick: () => deleteMut.mutate(cat._id) },
+      cancel:  { label: 'Cancel',      onClick: () => {} },
+      duration: 8000,
+    });
   }
 
   /* ── Filter logic (toggle never deletes — just hides from active view) ── */
@@ -188,7 +194,7 @@ export default function ClientCategories() {
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
             className="border-0 shadow-none focus-visible:ring-0 px-0 text-sm bg-transparent"
           />
-          <Button size="sm" onClick={handleAdd} disabled={adding || !newLabel.trim()}>
+          <Button size="sm" onClick={handleAdd} disabled={adding}>
             {adding
               ? <Loader2 className="h-4 w-4 animate-spin" />
               : <><Plus className="h-4 w-4 mr-1" />Add</>}
