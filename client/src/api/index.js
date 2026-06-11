@@ -37,6 +37,7 @@ export const reviewsAPI = {
   suggestions: (data) => API.post('/reviews/suggestions', data),
   delete: (id) => API.delete(`/reviews/${id}`),
   overview: (params) => API.get('/reviews/overview', { params }),
+  stats: (params) => API.get('/reviews/stats', { params }),
 };
 
 // ─── Feedback ────────────────────────────────────────────────────────────────

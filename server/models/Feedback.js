@@ -12,6 +12,7 @@ const feedbackSchema = new mongoose.Schema(
     phone: { type: String, trim: true, maxlength: 30, default: '' },
     rating: { type: Number, min: 1, max: 5, required: true },
     feedback: { type: String, required: true, trim: true, maxlength: 2000 },
+    categoryLabel: { type: String, trim: true, maxlength: 120, default: '' }, // service/category selected on review page
     status: {
       type: String,
       enum: ['new', 'in_progress', 'resolved', 'closed'],

@@ -52,6 +52,7 @@ const submitReview = asyncHandler(async (req, res) => {
     categoryLabel, selectedSuggestion,
     // negative
     customerName, customerEmail, customerPhone, message,
+    serviceLabel,   // service selected before rating (if available)
     qrToken,
   } = req.body;
 
@@ -82,6 +83,7 @@ const submitReview = asyncHandler(async (req, res) => {
       type: 'positive',
       categoryLabel: categoryLabel || '',
       selectedSuggestion: selectedSuggestion || '',
+      reviewText: selectedSuggestion || '',   // mirror into reviewText for uniform display
       source: qrCodeId ? 'qr' : 'direct',
       qrCodeId,
     });
@@ -95,6 +97,7 @@ const submitReview = asyncHandler(async (req, res) => {
       phone: customerPhone || '',
       rating: parseInt(rating),
       feedback: message || '',
+      categoryLabel: serviceLabel || categoryLabel || '',
       status: 'new',
     });
 
@@ -239,4 +242,52 @@ Rules:
   res.json({ success: true, suggestions: fallback });
 });
 
-module.exports = { getReviews, getReviewById, submitReview, deleteReview, getOverview, generateSuggestions };
+// @desc    Get rating distribution + counts for Reviews and Feedback
+// @route   GET /api/reviews/stats
+// @access  Private
+const getReviewStats = asyncHandler(async (req, res) => {
+  const clientId = req.user.role === 'superadmin'
+    ? req.query.clientId || null
+    : req.user.clientId;
+
+  const reviewQuery = clientId ? { clientId, type: 'positive' } : { type: 'positive' };
+  const feedbackQuery = clientId ? { clientId } : {};
+
+  // Fetch all ratings (lightweight projection)
+  const [reviewRatings, feedbackRatings] = await Promise.all([
+    Review.find(reviewQuery).select('rating createdAt').lean(),
+    Feedback.find(feedbackQuery).select('rating status createdAt').lean(),
+  ]);
+
+  // Google Reviews: rating distribution for 4★ and 5★
+  const googleByRating = { 4: 0, 5: 0 };
+  for (const r of reviewRatings) {
+    if (r.rating === 4) googleByRating[4]++;
+    else if (r.rating === 5) googleByRating[5]++;
+  }
+
+  // Private Feedback: rating distribution for 1★–3★
+  const feedbackByRating = { 1: 0, 2: 0, 3: 0 };
+  const feedbackByStatus = { new: 0, in_progress: 0, resolved: 0, closed: 0 };
+  for (const f of feedbackRatings) {
+    if (f.rating >= 1 && f.rating <= 3) feedbackByRating[f.rating] = (feedbackByRating[f.rating] || 0) + 1;
+    if (f.status) feedbackByStatus[f.status] = (feedbackByStatus[f.status] || 0) + 1;
+  }
+
+  const googleTotal   = reviewRatings.length;
+  const feedbackTotal = feedbackRatings.length;
+
+  res.json({
+    success: true,
+    data: {
+      googleReviews:    googleTotal,
+      privateFeedback:  feedbackTotal,
+      total:            googleTotal + feedbackTotal,
+      googleByRating,
+      feedbackByRating,
+      feedbackByStatus,
+    },
+  });
+});
+
+module.exports = { getReviews, getReviewById, submitReview, deleteReview, getOverview, generateSuggestions, getReviewStats };
