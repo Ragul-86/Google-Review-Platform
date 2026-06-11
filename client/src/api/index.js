@@ -1,0 +1,117 @@
+import API from './axios';
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+export const authAPI = {
+  login: (data) => API.post('/auth/login', data),
+  logout: () => API.post('/auth/logout'),
+  refresh: (refreshToken) => API.post('/auth/refresh', { refreshToken }),
+  me: () => API.get('/auth/me'),
+};
+
+// ─── Clients ─────────────────────────────────────────────────────────────────
+export const clientsAPI = {
+  getAll: (params) => API.get('/clients', { params }),
+  getById: (id) => API.get(`/clients/${id}`),
+  create: (data) => API.post('/clients', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  update: (id, data) => API.put(`/clients/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  delete: (id) => API.delete(`/clients/${id}`),
+  toggleStatus: (id) => API.patch(`/clients/${id}/status`),
+  resetPassword: (id) => API.post(`/clients/${id}/reset-password`),
+  getMe: () => API.get('/clients/me'),
+  updateMe: (data) => API.put('/clients/me', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+};
+
+// ─── Categories ──────────────────────────────────────────────────────────────
+export const categoriesAPI = {
+  getAll: (params) => API.get('/categories', { params }),
+  create: (data) => API.post('/categories', data),
+  update: (id, data) => API.put(`/categories/${id}`, data),
+  delete: (id) => API.delete(`/categories/${id}`),
+};
+
+// ─── Reviews ─────────────────────────────────────────────────────────────────
+export const reviewsAPI = {
+  getAll: (params) => API.get('/reviews', { params }),
+  getById: (id) => API.get(`/reviews/${id}`),
+  submit: (data) => API.post('/reviews/submit', data),
+  suggestions: (data) => API.post('/reviews/suggestions', data),
+  delete: (id) => API.delete(`/reviews/${id}`),
+  overview: (params) => API.get('/reviews/overview', { params }),
+};
+
+// ─── Feedback ────────────────────────────────────────────────────────────────
+export const feedbackAPI = {
+  getAll: (params) => API.get('/feedback', { params }),
+  getById: (id) => API.get(`/feedback/${id}`),
+  updateStatus: (id, status) => API.patch(`/feedback/${id}/status`, { status }),
+  delete: (id) => API.delete(`/feedback/${id}`),
+};
+
+// ─── QR Codes ────────────────────────────────────────────────────────────────
+export const qrcodesAPI = {
+  getAll: (params) => API.get('/qrcodes', { params }),
+  create: (data) => API.post('/qrcodes', data),
+  delete: (id) => API.delete(`/qrcodes/${id}`),
+  regenerate: (id) => API.post(`/qrcodes/${id}/regenerate`),
+  trackScan: (token) => API.post(`/qrcodes/scan/${token}`),
+};
+
+// ─── Analytics ───────────────────────────────────────────────────────────────
+export const analyticsAPI = {
+  get: (params) => API.get('/analytics', { params }),
+  overview: () => API.get('/analytics/overview'),
+};
+
+// ─── Reports ─────────────────────────────────────────────────────────────────
+export const reportsAPI = {
+  exportReviews: (params) =>
+    API.get('/reports/reviews', { params, responseType: 'blob' }),
+  exportFeedback: (params) =>
+    API.get('/reports/feedback', { params, responseType: 'blob' }),
+  exportFull: (params) =>
+    API.get('/reports/full', { params, responseType: 'blob' }),
+};
+
+// ─── Users ───────────────────────────────────────────────────────────────────
+export const usersAPI = {
+  getAll: (params) => API.get('/users', { params }),
+  getById: (id) => API.get(`/users/${id}`),
+  create: (data) => API.post('/users', data),
+  update: (id, data) => API.put(`/users/${id}`, data),
+  delete: (id) => API.delete(`/users/${id}`),
+  updateProfile: (data) => API.put('/users/profile', data),
+};
+
+// ─── WhatsApp Templates ───────────────────────────────────────────────────────
+export const whatsappAPI = {
+  getAll:      ()         => API.get('/whatsapp-templates'),
+  create:      (data)     => API.post('/whatsapp-templates', data),
+  update:      (id, data) => API.put(`/whatsapp-templates/${id}`, data),
+  delete:      (id)       => API.delete(`/whatsapp-templates/${id}`),
+  setDefault:  (id)       => API.patch(`/whatsapp-templates/${id}/set-default`),
+  aiGenerate:  (data)     => API.post('/whatsapp-templates/ai-generate', data),
+};
+
+// ─── Services ─────────────────────────────────────────────────────────────────
+export const servicesAPI = {
+  getAll:  (params)   => API.get('/services', { params }),
+  create:  (data)     => API.post('/services', data),
+  update:  (id, data) => API.put(`/services/${id}`, data),
+  delete:  (id)       => API.delete(`/services/${id}`),
+  toggle:  (id)       => API.patch(`/services/${id}/toggle`),
+};
+
+// ─── Customers ───────────────────────────────────────────────────────────────
+export const customersAPI = {
+  getAll:          (params) => API.get('/customers', { params }),
+  create:          (data)   => API.post('/customers', data),
+  update:          (id, data) => API.put(`/customers/${id}`, data),
+  delete:          (id)     => API.delete(`/customers/${id}`),
+  markWhatsapp:    (id)     => API.patch(`/customers/${id}/whatsapp-sent`),
+  getAnalytics:    ()       => API.get('/customers/analytics'),
+};
+
+// ─── Public ──────────────────────────────────────────────────────────────────
+export const publicAPI = {
+  getClientBySlug: (slug) => API.get(`/public/client/${slug}`),
+};
