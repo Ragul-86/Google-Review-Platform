@@ -42,12 +42,17 @@
 }
 
 @layer base {
-  * { @apply border-border; }
+  /* Use raw CSS instead of @apply to avoid build-time resolution errors */
+  * {
+    border-color: hsl(var(--border));
+  }
   body {
-    @apply bg-background text-foreground antialiased;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     font-family: 'Inter', system-ui, sans-serif;
   }
-  /* Logo / brand text uses Sora */
   .font-sora { font-family: 'Sora', system-ui, sans-serif; }
 }
 
