@@ -88,19 +88,31 @@ const getAnalytics = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Admin overview metrics
+// @desc    Admin overview metrics (includes feedback + activity feed)
 // @route   GET /api/analytics/overview
 // @access  Super Admin
 const getAdminOverview = asyncHandler(async (req, res) => {
-  const [totalClients, activeClients, totalReviews, totalQRCodes] = await Promise.all([
+  const [
+    totalClients, activeClients,
+    totalReviews, totalQRCodes,
+    totalFeedback, resolvedTickets, openTickets,
+  ] = await Promise.all([
     Client.countDocuments(),
     Client.countDocuments({ status: 'active' }),
-    Review.countDocuments(),
+    Review.countDocuments({ type: 'positive' }),
     QRCode.countDocuments(),
+    Feedback.countDocuments(),
+    Feedback.countDocuments({ status: { $in: ['resolved', 'closed'] } }),
+    Feedback.countDocuments({ status: { $in: ['new', 'in_progress'] } }),
   ]);
+
+  // Platform satisfaction score (positive reviews / total responses)
+  const totalResponses = totalReviews + totalFeedback || 1;
+  const platformScore  = Math.round((totalReviews / totalResponses) * 100);
 
   // Top clients by review count
   const topClients = await Review.aggregate([
+    { $match: { type: 'positive' } },
     { $group: { _id: '$clientId', count: { $sum: 1 }, avgRating: { $avg: '$rating' } } },
     { $sort: { count: -1 } },
     { $limit: 5 },
@@ -116,18 +128,41 @@ const getAdminOverview = asyncHandler(async (req, res) => {
     { $project: { businessName: '$client.businessName', count: 1, avgRating: { $round: ['$avgRating', 1] } } },
   ]);
 
-  // Recent activity
-  const recentReviews = await Review.find()
-    .populate('clientId', 'businessName')
-    .sort({ createdAt: -1 })
-    .limit(8)
-    .select('type rating createdAt clientId customerName');
+  // Combined activity feed — most recent reviews + feedback
+  const [recentReviews, recentFeedback] = await Promise.all([
+    Review.find({ type: 'positive' })
+      .populate('clientId', 'businessName')
+      .sort({ createdAt: -1 })
+      .limit(6)
+      .select('type rating createdAt clientId customerName categoryLabel')
+      .lean(),
+    Feedback.find()
+      .populate('clientId', 'businessName')
+      .sort({ createdAt: -1 })
+      .limit(6)
+      .select('rating status createdAt clientId customerName categoryLabel')
+      .lean(),
+  ]);
+
+  // Merge, tag, sort, take top 10
+  const activity = [
+    ...recentReviews.map((r) => ({ ...r, __activityType: 'google_review' })),
+    ...recentFeedback.map((f) => ({ ...f, __activityType: 'private_feedback' })),
+  ]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 10);
 
   res.json({
     success: true,
     data: {
-      totalClients, activeClients, totalReviews, totalQRCodes,
-      topClients, recentReviews,
+      totalClients, activeClients,
+      totalReviews, totalQRCodes,
+      totalFeedback, resolvedTickets, openTickets,
+      platformScore,
+      topClients,
+      recentActivity: activity,
+      // keep for backward compat
+      recentReviews: recentReviews.slice(0, 5),
     },
   });
 });

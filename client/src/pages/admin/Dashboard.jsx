@@ -3,8 +3,9 @@ import { analyticsAPI } from '@/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Star, Users, Building2, QrCode, ThumbsUp, ThumbsDown,
-  TrendingUp, Activity, BarChart3, MessageSquare,
+  Building2, MessageSquare, ThumbsUp, ThumbsDown,
+  QrCode, Star, TrendingUp, BarChart3,
+  Activity, Users, CheckCircle2, AlertCircle, Gauge,
 } from 'lucide-react';
 import { cn, formatDateTime } from '@/lib/utils';
 import {
@@ -14,27 +15,29 @@ import {
 
 /* ── KPI Card ────────────────────────────────────────────────── */
 function KpiCard({ label, value, sub, icon: Icon, color = 'gray', loading }) {
-  const colors = {
-    blue:   { bg: 'bg-blue-50',   icon: 'text-blue-600',   ring: 'bg-blue-100' },
-    green:  { bg: 'bg-green-50',  icon: 'text-green-600',  ring: 'bg-green-100' },
-    amber:  { bg: 'bg-amber-50',  icon: 'text-amber-600',  ring: 'bg-amber-100' },
-    purple: { bg: 'bg-purple-50', icon: 'text-purple-600', ring: 'bg-purple-100' },
-    rose:   { bg: 'bg-rose-50',   icon: 'text-rose-600',   ring: 'bg-rose-100' },
-    gray:   { bg: 'bg-gray-50',   icon: 'text-gray-600',   ring: 'bg-gray-100' },
+  const palettes = {
+    blue:   { ring: 'bg-blue-100',   icon: 'text-blue-600' },
+    green:  { ring: 'bg-green-100',  icon: 'text-green-600' },
+    amber:  { ring: 'bg-amber-100',  icon: 'text-amber-600' },
+    purple: { ring: 'bg-purple-100', icon: 'text-purple-600' },
+    rose:   { ring: 'bg-rose-100',   icon: 'text-rose-600' },
+    orange: { ring: 'bg-orange-100', icon: 'text-orange-600' },
+    teal:   { ring: 'bg-teal-100',   icon: 'text-teal-600' },
+    gray:   { ring: 'bg-gray-100',   icon: 'text-gray-600' },
   };
-  const c = colors[color];
+  const p = palettes[color] ?? palettes.gray;
   if (loading) return <Skeleton className="h-28 rounded-2xl" />;
   return (
     <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
       <CardContent className="p-5">
         <div className="flex items-start justify-between">
           <div className="min-w-0">
-            <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{label}</p>
             <p className="text-3xl font-bold text-gray-900 mt-1.5 leading-none">{value}</p>
             {sub && <p className="text-xs text-gray-400 mt-1.5">{sub}</p>}
           </div>
-          <div className={cn('p-2.5 rounded-xl', c.ring)}>
-            <Icon className={cn('h-5 w-5', c.icon)} />
+          <div className={cn('p-2.5 rounded-xl shrink-0', p.ring)}>
+            <Icon className={cn('h-5 w-5', p.icon)} />
           </div>
         </div>
       </CardContent>
@@ -42,7 +45,7 @@ function KpiCard({ label, value, sub, icon: Icon, color = 'gray', loading }) {
   );
 }
 
-/* ── Custom tooltip ─────────────────────────────────────────── */
+/* ── Custom chart tooltip ────────────────────────────────────── */
 function ChartTip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
@@ -51,6 +54,56 @@ function ChartTip({ active, payload, label }) {
       {payload.map((p) => (
         <p key={p.dataKey} style={{ color: p.color }} className="text-xs">{p.name}: {p.value}</p>
       ))}
+    </div>
+  );
+}
+
+/* ── Activity item ───────────────────────────────────────────── */
+function ActivityItem({ item }) {
+  const isGoogle   = item.__activityType === 'google_review';
+  const isFeedback = item.__activityType === 'private_feedback';
+
+  return (
+    <div className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+      {/* Icon badge */}
+      <div className={cn(
+        'h-9 w-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold',
+        isGoogle   ? 'bg-green-50 text-green-700'  :
+        isFeedback ? 'bg-orange-50 text-orange-600' :
+                     'bg-gray-100 text-gray-500',
+      )}>
+        {isGoogle ? <ThumbsUp className="h-4 w-4" /> : <ThumbsDown className="h-4 w-4" />}
+      </div>
+
+      {/* Details */}
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-semibold text-gray-900 truncate">
+          {item.clientId?.businessName ?? '—'}
+        </p>
+        <p className="text-[11px] text-gray-400">
+          {item.customerName && <span className="mr-1">{item.customerName} ·</span>}
+          {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+        </p>
+      </div>
+
+      {/* Tag */}
+      <div className="flex items-center gap-2 shrink-0">
+        {item.rating && (
+          <span className="text-[11px] font-semibold text-amber-600">
+            {item.rating}★
+          </span>
+        )}
+        <span className={cn(
+          'text-[10px] font-bold uppercase px-2 py-0.5 rounded-full',
+          isGoogle
+            ? 'bg-green-50 text-green-700'
+            : item.status === 'resolved' || item.status === 'closed'
+              ? 'bg-teal-50 text-teal-700'
+              : 'bg-orange-50 text-orange-600',
+        )}>
+          {isGoogle ? 'Google' : (item.status || 'new').replace('_', ' ')}
+        </span>
+      </div>
     </div>
   );
 }
@@ -69,22 +122,17 @@ export default function AdminDashboard() {
 
   const loading = ovLoading || anLoading;
 
-  /* monthly data for chart */
   const monthly = (analytics?.monthly ?? []).map((m) => ({
-    month: m.month ?? m._id ?? '',
-    reviews: m.count ?? m.reviews ?? 0,
+    month: m.month ?? '',
+    reviews: m.count ?? 0,
   }));
 
-  /* client growth data */
   const clientGrowth = (analytics?.clientGrowth ?? []).map((m) => ({
-    month: m._id ?? m.month ?? '',
+    month: m.month ?? '',
     clients: m.count ?? 0,
   }));
 
-  const positive  = analytics?.positive ?? 0;
-  const negative  = analytics?.negative ?? 0;
-  const totalRev  = (positive + negative) || 1;
-  const posRate   = Math.round((positive / totalRev) * 100);
+  const ov = overview ?? {};
 
   return (
     <div className="space-y-6">
@@ -94,19 +142,20 @@ export default function AdminDashboard() {
         <p className="text-sm text-gray-400 mt-0.5">Real-time metrics across all client accounts</p>
       </div>
 
-      {/* ── 6 KPI cards ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <KpiCard loading={loading} icon={Building2} color="blue"   label="Total Clients"   value={overview?.totalClients  ?? 0} sub={`${overview?.activeClients ?? 0} active`} />
-        <KpiCard loading={loading} icon={MessageSquare} color="purple" label="Total Reviews" value={overview?.totalReviews ?? 0} sub={`${posRate}% positive`} />
-        <KpiCard loading={loading} icon={ThumbsUp}   color="green"  label="Positive Reviews" value={positive} sub={`${posRate}% of total`} />
-        <KpiCard loading={loading} icon={ThumbsDown} color="rose"   label="Private Feedback" value={negative} sub={`${100 - posRate}% of total`} />
-        <KpiCard loading={loading} icon={Star}       color="amber"  label="Avg Rating"      value={analytics?.avgRating?.toFixed(1) ?? '—'} sub="across all clients" />
-        <KpiCard loading={loading} icon={QrCode}     color="gray"   label="QR Codes"        value={overview?.totalQRCodes ?? analytics?.qrCodes ?? 0} sub="across platform" />
+      {/* ── 8 KPI cards ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard loading={loading} icon={Building2}    color="blue"   label="Total Clients"      value={ov.totalClients   ?? 0} sub={`${ov.activeClients ?? 0} active`} />
+        <KpiCard loading={loading} icon={ThumbsUp}     color="green"  label="Google Reviews"     value={ov.totalReviews   ?? 0} sub="Positive submissions" />
+        <KpiCard loading={loading} icon={ThumbsDown}   color="rose"   label="Private Feedback"   value={ov.totalFeedback  ?? 0} sub={`${ov.openTickets ?? 0} open`} />
+        <KpiCard loading={loading} icon={CheckCircle2} color="teal"   label="Resolved Tickets"   value={ov.resolvedTickets ?? 0} sub={`${ov.openTickets ?? 0} pending`} />
+        <KpiCard loading={loading} icon={AlertCircle}  color="orange" label="Open Tickets"       value={ov.openTickets   ?? 0} sub="Needs attention" />
+        <KpiCard loading={loading} icon={Star}         color="amber"  label="Avg Rating"         value={analytics?.avgRating?.toFixed(1) ?? '—'} sub="Across all reviews" />
+        <KpiCard loading={loading} icon={Gauge}        color="purple" label="Platform Score"     value={`${ov.platformScore ?? 0}%`} sub="Satisfaction score" />
+        <KpiCard loading={loading} icon={QrCode}       color="gray"   label="QR Codes"           value={ov.totalQRCodes   ?? analytics?.qrCodes?.length ?? 0} sub="Across platform" />
       </div>
 
       {/* ── Charts row ───────────────────────────────────────────── */}
       <div className="grid md:grid-cols-2 gap-4">
-        {/* Monthly reviews trend */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
@@ -137,7 +186,6 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Client growth */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
@@ -163,9 +211,9 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* ── Bottom row: recent activity + top clients ─────────────── */}
+      {/* ── Activity feed + top clients ──────────────────────────── */}
       <div className="grid md:grid-cols-2 gap-4">
-        {/* Recent reviews activity feed */}
+        {/* Combined activity feed */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
@@ -174,34 +222,13 @@ export default function AdminDashboard() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {ovLoading ? <Skeleton className="h-40" /> :
-              (overview?.recentReviews?.length ?? 0) === 0 ? (
-                <div className="py-10 text-center text-sm text-gray-300">No reviews yet</div>
+            {ovLoading ? <Skeleton className="h-52" /> :
+              (ov.recentActivity?.length ?? 0) === 0 ? (
+                <div className="py-10 text-center text-sm text-gray-300">No activity yet</div>
               ) : (
                 <div className="divide-y divide-gray-50">
-                  {(overview?.recentReviews ?? []).map((r) => (
-                    <div key={r._id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                      <div className={cn(
-                        'h-8 w-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold',
-                        r.rating >= 4 ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-600',
-                      )}>
-                        {r.rating}★
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-semibold text-gray-900 truncate">
-                          {r.clientId?.businessName ?? '—'}
-                        </p>
-                        <p className="text-[11px] text-gray-400">{formatDateTime(r.createdAt)}</p>
-                      </div>
-                      <span className={cn(
-                        'text-[10px] font-bold uppercase px-2 py-0.5 rounded-full',
-                        r.type === 'positive'
-                          ? 'bg-green-50 text-green-700'
-                          : 'bg-orange-50 text-orange-600',
-                      )}>
-                        {r.type === 'positive' ? 'Google' : 'Feedback'}
-                      </span>
-                    </div>
+                  {(ov.recentActivity ?? []).map((item) => (
+                    <ActivityItem key={`${item.__activityType}-${item._id}`} item={item} />
                   ))}
                 </div>
               )
@@ -218,12 +245,12 @@ export default function AdminDashboard() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {ovLoading ? <Skeleton className="h-40" /> :
-              (overview?.topClients?.length ?? 0) === 0 ? (
+            {ovLoading ? <Skeleton className="h-52" /> :
+              (ov.topClients?.length ?? 0) === 0 ? (
                 <div className="py-10 text-center text-sm text-gray-300">No clients yet</div>
               ) : (
                 <div className="divide-y divide-gray-50">
-                  {(overview?.topClients ?? []).map((c, i) => (
+                  {(ov.topClients ?? []).map((c, i) => (
                     <div key={c._id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
                       <span className={cn(
                         'h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0',
@@ -233,7 +260,7 @@ export default function AdminDashboard() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-semibold text-gray-900 truncate">{c.businessName}</p>
-                        <div className="flex items-center gap-1 mt-0.5">
+                        <div className="flex items-center gap-0.5 mt-0.5">
                           {Array.from({ length: Math.round(c.avgRating ?? 0) }).map((_, k) => (
                             <Star key={k} className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
                           ))}

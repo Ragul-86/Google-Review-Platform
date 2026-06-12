@@ -25,8 +25,11 @@ export const clientsAPI = {
 export const categoriesAPI = {
   getAll: (params) => API.get('/categories', { params }),
   create: (data) => API.post('/categories', data),
+  bulkCreate: (data) => API.post('/categories/bulk', data),
   update: (id, data) => API.put(`/categories/${id}`, data),
+  reorder: (data) => API.patch('/categories/reorder', data),
   delete: (id) => API.delete(`/categories/${id}`),
+  suggest: (data) => API.post('/categories/suggest', data),
 };
 
 // ─── Reviews ─────────────────────────────────────────────────────────────────
