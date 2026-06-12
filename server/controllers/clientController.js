@@ -219,8 +219,77 @@ const resetClientPassword = asyncHandler(async (req, res) => {
   res.json({ success: true, tempPassword, email: owner.email });
 });
 
+// @desc    Reset client login ID (owner email)
+// @route   PATCH /api/clients/:id/reset-login
+// @access  Super Admin
+const resetLoginId = asyncHandler(async (req, res) => {
+  const { newEmail } = req.body;
+  if (!newEmail?.trim()) { res.status(400); throw new Error('newEmail is required'); }
+
+  const client = await Client.findById(req.params.id).populate('ownerId', 'email name');
+  if (!client) { res.status(404); throw new Error('Client not found'); }
+  if (!client.ownerId) { res.status(400); throw new Error('Client has no owner'); }
+
+  const emailLower = newEmail.toLowerCase().trim();
+
+  // Check not already in use by another user
+  const existing = await User.findOne({ email: emailLower, _id: { $ne: client.ownerId._id } });
+  if (existing) { res.status(409); throw new Error('Email already in use by another account'); }
+
+  const owner = await User.findById(client.ownerId._id);
+  const oldEmail = owner.email;
+  owner.email = emailLower;
+  await owner.save({ validateBeforeSave: false });
+
+  res.json({ success: true, oldEmail, newEmail: emailLower, message: 'Login ID updated successfully' });
+});
+
+// @desc    Send message (email) to client owner
+// @route   POST /api/clients/:id/message
+// @access  Super Admin
+const sendClientMessage = asyncHandler(async (req, res) => {
+  const { subject, message, channel = 'email' } = req.body;
+  if (!subject?.trim() || !message?.trim()) {
+    res.status(400); throw new Error('subject and message are required');
+  }
+
+  const client = await Client.findById(req.params.id).populate('ownerId', 'email name');
+  if (!client) { res.status(404); throw new Error('Client not found'); }
+
+  const ownerEmail = client.ownerId?.email || client.email;
+  const ownerName  = client.ownerId?.name || client.businessName;
+
+  if (!ownerEmail) { res.status(400); throw new Error('No email address found for this client'); }
+
+  const { sendEmail } = require('../services/emailService');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #1f2937;">${subject}</h2>
+      <p>Hi ${ownerName},</p>
+      <div style="background: #f9fafb; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 16px 0;">
+        <p style="white-space: pre-wrap; color: #374151;">${message}</p>
+      </div>
+      <p style="color: #6b7280; font-size: 12px; margin-top: 24px;">— Platform Admin</p>
+    </div>
+  `;
+
+  const result = await sendEmail({
+    to: ownerEmail,
+    subject: `[Admin Message] ${subject}`,
+    html,
+    text: message,
+  });
+
+  if (!result.success) {
+    res.status(500); throw new Error('Failed to send email: ' + result.error);
+  }
+
+  res.json({ success: true, sentTo: ownerEmail, channel, message: 'Message sent successfully' });
+});
+
 module.exports = {
   getClients, getClientById, createClient, updateClient,
   deleteClient, toggleClientStatus, getMyClient, updateMyClient,
-  resetClientPassword,
+  resetClientPassword, resetLoginId, sendClientMessage,
 };

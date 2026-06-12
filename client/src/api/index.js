@@ -17,6 +17,8 @@ export const clientsAPI = {
   delete: (id) => API.delete(`/clients/${id}`),
   toggleStatus: (id) => API.patch(`/clients/${id}/status`),
   resetPassword: (id) => API.post(`/clients/${id}/reset-password`),
+  resetLoginId: (id, newEmail) => API.patch(`/clients/${id}/reset-login`, { newEmail }),
+  sendMessage: (id, data) => API.post(`/clients/${id}/message`, data),
   getMe: () => API.get('/clients/me'),
   updateMe: (data) => API.put('/clients/me', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
 };

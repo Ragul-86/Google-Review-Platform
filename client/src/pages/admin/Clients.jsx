@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientsAPI } from '@/api';
 import { Button } from '@/components/ui/button';
@@ -7,14 +7,17 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import {
   Plus, Trash2, ExternalLink, Copy, Pencil, KeyRound,
   AlertCircle, CheckCircle2, MoreVertical, Search,
-  Building2, ChevronUp, ChevronDown,
+  Building2, ChevronUp, ChevronDown, Eye, Mail,
+  MessageCircle, Star, ShieldCheck, ShieldOff, AtSign,
+  Send, Globe,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 
 /* ── Google URL validation ───────────────────────────────────── */
@@ -37,12 +40,12 @@ function GoogleUrlField({ value, onChange }) {
         placeholder="https://search.google.com/local/writereview?placeid=..."
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={value ? (s.valid ? 'border-green-400' : 'border-red-400') : ''}
+        className={cn('mt-1', value ? (s.valid ? 'border-green-400' : 'border-red-400') : '')}
       />
       {value && (
         <p className={cn('mt-1 flex items-center gap-1 text-xs', s.valid ? 'text-green-600' : 'text-red-500')}>
           {s.valid
-            ? <><CheckCircle2 className="h-3 w-3" /> Valid</>
+            ? <><CheckCircle2 className="h-3 w-3" /> Valid Google URL</>
             : <><AlertCircle className="h-3 w-3" /> Must be a Google Review URL</>}
         </p>
       )}
@@ -64,80 +67,149 @@ const EMPTY = {
   ownerName:'',ownerEmail:'',subscriptionPlan:'free',
 };
 
-/* ── Row action menu ─────────────────────────────────────────── */
-function ActionMenu({ client, onEdit, onReset, onDelete, onToggle }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+/* ══════════════════════════════════════════════════════════════
+   PORTAL-BASED ACTION MENU — renders at root, never clipped
+   ══════════════════════════════════════════════════════════════ */
+function ActionMenu({ client, onEdit, onResetPassword, onResetLogin, onToggle, onDelete, onMessage }) {
+  const [open, setOpen]   = useState(false);
+  const [pos, setPos]     = useState({ top: 0, left: 0 });
+  const btnRef            = useRef(null);
+
+  /* Close on outside click */
   useEffect(() => {
-    function h(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
+    if (!open) return;
+    function handler(e) {
+      if (btnRef.current && !btnRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  /* Close on scroll */
+  useEffect(() => {
+    if (!open) return;
+    const handler = () => setOpen(false);
+    window.addEventListener('scroll', handler, true);
+    return () => window.removeEventListener('scroll', handler, true);
+  }, [open]);
+
+  function openMenu(e) {
+    e.stopPropagation();
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const menuHeight = 360; // estimated
+    const menuWidth  = 220;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow > menuHeight ? rect.bottom + 4 : rect.top - menuHeight - 4;
+    const left = Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8);
+    setPos({ top, left });
+    setOpen((v) => !v);
+  }
 
   function action(fn) { setOpen(false); fn(); }
 
+  const isActive = client.status === 'active';
+
+  const menu = open && createPortal(
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
+      {/* Menu */}
+      <div
+        className="fixed z-[9999] bg-white border border-gray-100 rounded-2xl shadow-2xl py-1.5 w-[220px] overflow-hidden"
+        style={{ top: pos.top, left: pos.left }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Client name header */}
+        <div className="px-3 py-2.5 border-b border-gray-100 mb-1">
+          <p className="text-xs font-bold text-gray-900 truncate">{client.businessName}</p>
+          <p className="text-[11px] text-gray-400 truncate">{client.ownerId?.email ?? 'No owner'}</p>
+        </div>
+
+        {/* View actions */}
+        <MenuRow icon={Eye} label="View Review Page" onClick={() => action(() => {
+          window.open(`${window.location.origin}/review/${client.slug}`, '_blank');
+        })} />
+        <MenuRow icon={Star} label="Open Google Reviews" onClick={() => action(() => {
+          if (!client.googleReviewLink) {
+            toast.error('Google Review URL not configured for this client');
+            return;
+          }
+          window.open(client.googleReviewLink, '_blank');
+        })} />
+        <MenuRow icon={Globe} label="Copy Review Link" onClick={() => action(() => {
+          const url = `${window.location.origin}/review/${client.slug}`;
+          navigator.clipboard.writeText(url);
+          toast.success('Review link copied!');
+        })} />
+
+        <div className="border-t border-gray-100 my-1" />
+
+        {/* Management actions */}
+        <MenuRow icon={Pencil} label="Edit Client" onClick={() => action(onEdit)} />
+        <MenuRow icon={MessageCircle} label="Send Message" onClick={() => action(onMessage)} />
+
+        <div className="border-t border-gray-100 my-1" />
+
+        {/* Auth actions */}
+        <MenuRow icon={KeyRound} label="Reset Password" onClick={() => action(onResetPassword)} />
+        <MenuRow icon={AtSign} label="Reset Login ID" onClick={() => action(onResetLogin)} />
+
+        <div className="border-t border-gray-100 my-1" />
+
+        {/* Status + delete */}
+        <MenuRow
+          icon={isActive ? ShieldOff : ShieldCheck}
+          label={isActive ? 'Deactivate Account' : 'Activate Account'}
+          onClick={() => action(onToggle)}
+          color={isActive ? 'amber' : 'green'}
+        />
+        <MenuRow
+          icon={Trash2}
+          label="Delete Client"
+          onClick={() => action(onDelete)}
+          color="red"
+        />
+      </div>
+    </>,
+    document.body
+  );
+
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
-        onClick={() => setOpen((v) => !v)}
-        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+        ref={btnRef}
+        onClick={openMenu}
+        className={cn(
+          'p-1.5 rounded-lg transition-colors',
+          open ? 'bg-gray-200 text-gray-700' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100',
+        )}
+        aria-label="Client actions"
       >
         <MoreVertical className="h-4 w-4" />
       </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-8 z-20 bg-white border border-gray-100 rounded-xl shadow-lg py-1.5 min-w-[170px]">
-            <button
-              onClick={() => action(onEdit)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              <Pencil className="h-3.5 w-3.5 text-gray-400" /> Edit details
-            </button>
-            <button
-              onClick={() => action(() => {
-                const url = `${window.location.origin}/review/${client.slug}`;
-                navigator.clipboard.writeText(url);
-                toast.success('Review link copied');
-              })}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              <Copy className="h-3.5 w-3.5 text-gray-400" /> Copy review link
-            </button>
-            <a
-              href={`${window.location.origin}/review/${client.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              onClick={() => setOpen(false)}
-            >
-              <ExternalLink className="h-3.5 w-3.5 text-gray-400" /> Open review page
-            </a>
-            <button
-              onClick={() => action(onToggle)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              <Switch checked={client.status === 'active'} className="scale-75 pointer-events-none" />
-              {client.status === 'active' ? 'Deactivate' : 'Activate'}
-            </button>
-            <button
-              onClick={() => action(onReset)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              <KeyRound className="h-3.5 w-3.5 text-gray-400" /> Reset password
-            </button>
-            <div className="border-t border-gray-100 mt-1 pt-1">
-              <button
-                onClick={() => action(onDelete)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-              >
-                <Trash2 className="h-3.5 w-3.5" /> Delete client
-              </button>
-            </div>
-          </div>
-        </>
+      {menu}
+    </>
+  );
+}
+
+function MenuRow({ icon: Icon, label, onClick, color }) {
+  const colors = {
+    red:   'text-red-600 hover:bg-red-50',
+    amber: 'text-amber-600 hover:bg-amber-50',
+    green: 'text-green-600 hover:bg-green-50',
+  };
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left',
+        color ? colors[color] : 'text-gray-700 hover:bg-gray-50',
       )}
-    </div>
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      {label}
+    </button>
   );
 }
 
@@ -147,13 +219,11 @@ function SortHeader({ label, field, sort, onSort }) {
   return (
     <button
       onClick={() => onSort(field)}
-      className="flex items-center gap-1 text-xs font-bold text-gray-500 uppercase tracking-wider hover:text-gray-700 transition-colors"
+      className="flex items-center gap-1 text-xs font-bold text-gray-500 uppercase tracking-wider hover:text-gray-700"
     >
       {label}
       {active
-        ? sort.dir === 'asc'
-          ? <ChevronUp className="h-3 w-3" />
-          : <ChevronDown className="h-3 w-3" />
+        ? sort.dir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
         : <ChevronDown className="h-3 w-3 text-gray-300" />}
     </button>
   );
@@ -162,32 +232,48 @@ function SortHeader({ label, field, sort, onSort }) {
 /* ════════════════════════════════════════════════════════════════ */
 export default function AdminClients() {
   const qc = useQueryClient();
-  const [open, setOpen]         = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [editClient, setEditClient] = useState(null);
-  const [form, setForm]         = useState(EMPTY);
-  const [editForm, setEditForm] = useState({});
-  const [creds, setCreds]       = useState(null);
-  const [search, setSearch]     = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [sort, setSort]         = useState({ field: 'businessName', dir: 'asc' });
 
+  /* Modal states */
+  const [createOpen, setCreateOpen]   = useState(false);
+  const [editOpen, setEditOpen]       = useState(false);
+  const [editClient, setEditClient]   = useState(null);
+  const [credsOpen, setCredsOpen]     = useState(false);
+  const [creds, setCreds]             = useState(null);
+  const [resetLoginOpen, setRLoginOpen] = useState(false);
+  const [resetLoginClient, setRLoginClient] = useState(null);
+  const [newLoginEmail, setNewLoginEmail]   = useState('');
+  const [msgOpen, setMsgOpen]         = useState(false);
+  const [msgClient, setMsgClient]     = useState(null);
+  const [msgSubject, setMsgSubject]   = useState('');
+  const [msgBody, setMsgBody]         = useState('');
+
+  /* Form states */
+  const [form, setForm]       = useState(EMPTY);
+  const [editForm, setEditForm] = useState({});
+
+  /* Filter / sort */
+  const [search, setSearch]           = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sort, setSort]               = useState({ field: 'businessName', dir: 'asc' });
+
+  /* ── Queries ─────────────────────────────────────────────────── */
   const { data, isLoading } = useQuery({
     queryKey: ['clients'],
     queryFn: () => clientsAPI.getAll().then((r) => r.data),
   });
 
+  /* ── Mutations ───────────────────────────────────────────────── */
   const createMut = useMutation({
     mutationFn: (fd) => clientsAPI.create(fd),
     onSuccess: (res) => {
-      toast.success('Client created');
-      setOpen(false);
+      toast.success('Client created successfully');
+      setCreateOpen(false);
       const savedEmail = form.ownerEmail;
       setForm(EMPTY);
       if (res.data.tempPassword) setCreds({ email: savedEmail, password: res.data.tempPassword });
       qc.invalidateQueries({ queryKey: ['clients'] });
     },
-    onError: (e) => toast.error(e?.response?.data?.message || 'Failed'),
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to create client'),
   });
 
   const editMut = useMutation({
@@ -196,32 +282,67 @@ export default function AdminClients() {
       Object.entries(data).forEach(([k, v]) => fd.append(k, v ?? ''));
       return clientsAPI.update(id, fd);
     },
-    onSuccess: () => { toast.success('Client updated'); setEditOpen(false); qc.invalidateQueries({ queryKey: ['clients'] }); },
-    onError: (e) => toast.error(e?.response?.data?.message || 'Failed'),
+    onSuccess: () => {
+      toast.success('Client updated successfully');
+      setEditOpen(false);
+      qc.invalidateQueries({ queryKey: ['clients'] });
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to update'),
   });
 
-  const deleteMut  = useMutation({
+  const deleteMut = useMutation({
     mutationFn: (id) => clientsAPI.delete(id),
-    onSuccess: () => { toast.success('Deleted'); qc.invalidateQueries({ queryKey: ['clients'] }); },
-    onError: (e) => toast.error(e?.response?.data?.message || 'Failed'),
+    onSuccess: () => { toast.success('Client deleted'); qc.invalidateQueries({ queryKey: ['clients'] }); },
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to delete'),
   });
 
-  const toggleMut  = useMutation({
+  const toggleMut = useMutation({
     mutationFn: (id) => clientsAPI.toggleStatus(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['clients'] }),
+    onSuccess: (res, id) => {
+      const newStatus = res.data.data?.status;
+      toast.success(newStatus === 'active' ? 'Account activated' : 'Account deactivated');
+      qc.invalidateQueries({ queryKey: ['clients'] });
+    },
+    onError: () => toast.error('Failed to change status'),
   });
 
   const resetPwdMut = useMutation({
     mutationFn: (id) => clientsAPI.resetPassword(id),
-    onSuccess: (res) => { setCreds({ email: res.data.email, password: res.data.tempPassword }); toast.success('Password reset'); },
-    onError: (e) => toast.error(e?.response?.data?.message || 'Failed'),
+    onSuccess: (res) => {
+      setCreds({ email: res.data.email, password: res.data.tempPassword });
+      setCredsOpen(true);
+      toast.success('Password reset successfully');
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to reset password'),
   });
 
+  const resetLoginMut = useMutation({
+    mutationFn: ({ id, newEmail }) => clientsAPI.resetLoginId(id, newEmail),
+    onSuccess: () => {
+      toast.success('Login ID updated successfully');
+      setRLoginOpen(false);
+      setNewLoginEmail('');
+      qc.invalidateQueries({ queryKey: ['clients'] });
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to update login ID'),
+  });
+
+  const messageMut = useMutation({
+    mutationFn: ({ id, subject, message }) => clientsAPI.sendMessage(id, { subject, message }),
+    onSuccess: () => {
+      toast.success('Message sent successfully');
+      setMsgOpen(false);
+      setMsgSubject(''); setMsgBody('');
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to send message'),
+  });
+
+  /* ── Handlers ────────────────────────────────────────────────── */
   function handleCreate() {
-    if (!form.businessName?.trim()) return toast.error('Business name required');
-    if (!form.ownerEmail?.trim())   return toast.error('Owner email required');
+    if (!form.businessName?.trim()) return toast.error('Business name is required');
+    if (!form.ownerEmail?.trim())   return toast.error('Owner email is required');
     const { valid, reason } = validateGoogleUrl(form.googleReviewLink);
-    if (!valid) { toast.error(reason === 'missing' ? 'Google Review URL required' : 'Invalid Google Review URL'); return; }
+    if (!valid) { toast.error(reason === 'missing' ? 'Google Review URL is required' : 'Invalid Google Review URL'); return; }
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
     createMut.mutate(fd);
@@ -243,15 +364,28 @@ export default function AdminClients() {
 
   function handleEdit() {
     const { valid, reason } = validateGoogleUrl(editForm.googleReviewLink);
-    if (!valid) { toast.error(reason === 'missing' ? 'Google Review URL required' : 'Invalid Google Review URL'); return; }
+    if (!valid) { toast.error(reason === 'missing' ? 'Google Review URL is required' : 'Invalid Google Review URL'); return; }
     editMut.mutate({ id: editClient._id, data: editForm });
+  }
+
+  function openResetLogin(client) {
+    setRLoginClient(client);
+    setNewLoginEmail(client.ownerId?.email || '');
+    setRLoginOpen(true);
+  }
+
+  function openMessage(client) {
+    setMsgClient(client);
+    setMsgSubject('');
+    setMsgBody('');
+    setMsgOpen(true);
   }
 
   function toggleSort(field) {
     setSort((s) => s.field === field ? { field, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { field, dir: 'asc' });
   }
 
-  /* Filter + sort */
+  /* ── Filter + sort ───────────────────────────────────────────── */
   const allClients = data?.data ?? [];
   const active   = allClients.filter((c) => c.status === 'active').length;
   const inactive = allClients.length - active;
@@ -276,7 +410,7 @@ export default function AdminClients() {
 
   return (
     <div className="space-y-5">
-      {/* Page header */}
+      {/* ── Page header ──────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Clients</h2>
@@ -284,33 +418,33 @@ export default function AdminClients() {
             {allClients.length} total · {active} active · {inactive} inactive
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2"><Plus className="h-4 w-4" /> New Client</Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[90vh] overflow-y-auto z-[9999]">
             <DialogHeader><DialogTitle>Create client &amp; owner</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div><Label>Business name</Label><Input value={form.businessName} onChange={(e) => setForm({ ...form, businessName: e.target.value })} /></div>
+              <div><Label>Business name</Label><Input className="mt-1" value={form.businessName} onChange={(e) => setForm({ ...form, businessName: e.target.value })} /></div>
               <div>
-                <Label>Type</Label>
+                <Label>Business type</Label>
                 <Select value={form.businessCategory} onValueChange={(v) => setForm({ ...form, businessCategory: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{BUSINESS_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent className="z-[9999]">{BUSINESS_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <GoogleUrlField value={form.googleReviewLink} onChange={(v) => setForm({ ...form, googleReviewLink: v })} />
               <div className="grid grid-cols-2 gap-2">
-                <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-                <div><Label>Business email</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+                <div><Label>Phone</Label><Input className="mt-1" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+                <div><Label>Business email</Label><Input className="mt-1" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
               </div>
-              <div><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
-              <div><Label>Logo URL</Label><Input type="url" placeholder="https://..." value={form.businessLogo} onChange={(e) => setForm({ ...form, businessLogo: e.target.value })} /></div>
+              <div><Label>Address</Label><Input className="mt-1" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+              <div><Label>Logo URL</Label><Input className="mt-1" type="url" placeholder="https://…" value={form.businessLogo} onChange={(e) => setForm({ ...form, businessLogo: e.target.value })} /></div>
               <div className="pt-2 border-t">
-                <p className="text-sm font-semibold text-gray-700 mb-2">Owner login</p>
+                <p className="text-sm font-semibold text-gray-700 mb-2">Owner login account</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <div><Label>Name</Label><Input value={form.ownerName} onChange={(e) => setForm({ ...form, ownerName: e.target.value })} /></div>
-                  <div><Label>Email</Label><Input type="email" value={form.ownerEmail} onChange={(e) => setForm({ ...form, ownerEmail: e.target.value })} /></div>
+                  <div><Label>Full name</Label><Input className="mt-1" value={form.ownerName} onChange={(e) => setForm({ ...form, ownerName: e.target.value })} /></div>
+                  <div><Label>Email (login ID)</Label><Input className="mt-1" type="email" value={form.ownerEmail} onChange={(e) => setForm({ ...form, ownerEmail: e.target.value })} /></div>
                 </div>
               </div>
               <Button className="w-full" onClick={handleCreate} disabled={createMut.isPending}>
@@ -321,26 +455,26 @@ export default function AdminClients() {
         </Dialog>
       </div>
 
-      {/* Edit dialog */}
+      {/* ── Edit dialog ──────────────────────────────────────────── */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Edit client</DialogTitle></DialogHeader>
+        <DialogContent className="max-h-[90vh] overflow-y-auto z-[9999]">
+          <DialogHeader><DialogTitle>Edit client — {editClient?.businessName}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label>Business name</Label><Input value={editForm.businessName||''} onChange={(e) => setEditForm({...editForm,businessName:e.target.value})} /></div>
+            <div><Label>Business name</Label><Input className="mt-1" value={editForm.businessName||''} onChange={(e) => setEditForm({...editForm,businessName:e.target.value})} /></div>
             <div>
-              <Label>Type</Label>
+              <Label>Business type</Label>
               <Select value={editForm.businessCategory||''} onValueChange={(v) => setEditForm({...editForm,businessCategory:v})}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{BUSINESS_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent className="z-[9999]">{BUSINESS_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <GoogleUrlField value={editForm.googleReviewLink||''} onChange={(v) => setEditForm({...editForm,googleReviewLink:v})} />
             <div className="grid grid-cols-2 gap-2">
-              <div><Label>Phone</Label><Input value={editForm.phone||''} onChange={(e) => setEditForm({...editForm,phone:e.target.value})} /></div>
-              <div><Label>Business email</Label><Input type="email" value={editForm.email||''} onChange={(e) => setEditForm({...editForm,email:e.target.value})} /></div>
+              <div><Label>Phone</Label><Input className="mt-1" value={editForm.phone||''} onChange={(e) => setEditForm({...editForm,phone:e.target.value})} /></div>
+              <div><Label>Business email</Label><Input className="mt-1" type="email" value={editForm.email||''} onChange={(e) => setEditForm({...editForm,email:e.target.value})} /></div>
             </div>
-            <div><Label>Address</Label><Input value={editForm.address||''} onChange={(e) => setEditForm({...editForm,address:e.target.value})} /></div>
-            <div><Label>Logo URL</Label><Input type="url" placeholder="https://..." value={editForm.businessLogo||''} onChange={(e) => setEditForm({...editForm,businessLogo:e.target.value})} /></div>
+            <div><Label>Address</Label><Input className="mt-1" value={editForm.address||''} onChange={(e) => setEditForm({...editForm,address:e.target.value})} /></div>
+            <div><Label>Logo URL</Label><Input className="mt-1" type="url" placeholder="https://…" value={editForm.businessLogo||''} onChange={(e) => setEditForm({...editForm,businessLogo:e.target.value})} /></div>
             <Button className="w-full" onClick={handleEdit} disabled={editMut.isPending}>
               {editMut.isPending ? 'Saving…' : 'Save changes'}
             </Button>
@@ -348,14 +482,14 @@ export default function AdminClients() {
         </DialogContent>
       </Dialog>
 
-      {/* Credentials modal */}
-      <Dialog open={!!creds} onOpenChange={(o) => !o && setCreds(null)}>
-        <DialogContent>
+      {/* ── Credentials modal ────────────────────────────────────── */}
+      <Dialog open={credsOpen} onOpenChange={(o) => { if (!o) { setCredsOpen(false); setCreds(null); } }}>
+        <DialogContent className="z-[9999]">
           <DialogHeader><DialogTitle>Owner credentials</DialogTitle></DialogHeader>
-          <p className="text-sm text-gray-500">Save these — the password won't be shown again.</p>
+          <p className="text-sm text-gray-500 mb-3">Save these — password won't be shown again.</p>
           <div className="space-y-2 font-mono text-sm bg-gray-50 border border-gray-100 p-4 rounded-xl">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-gray-700">Email: <strong>{creds?.email}</strong></span>
+              <span className="text-gray-700 truncate">Email: <strong>{creds?.email}</strong></span>
               <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(creds?.email??''); toast.success('Copied'); }}><Copy className="h-3.5 w-3.5" /></Button>
             </div>
             <div className="flex items-center justify-between gap-2">
@@ -363,9 +497,78 @@ export default function AdminClients() {
               <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(creds?.password??''); toast.success('Copied'); }}><Copy className="h-3.5 w-3.5" /></Button>
             </div>
           </div>
-          <Button onClick={() => { navigator.clipboard.writeText(`Email: ${creds?.email}\nPassword: ${creds?.password}`); toast.success('Copied all'); }}>
-            Copy all
+          <Button className="w-full mt-2" onClick={() => { navigator.clipboard.writeText(`Email: ${creds?.email}\nPassword: ${creds?.password}`); toast.success('Copied all'); }}>
+            Copy all credentials
           </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Reset Login ID modal ─────────────────────────────────── */}
+      <Dialog open={resetLoginOpen} onOpenChange={setRLoginOpen}>
+        <DialogContent className="z-[9999]">
+          <DialogHeader>
+            <DialogTitle>Reset Login ID — {resetLoginClient?.businessName}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-500 mb-1">
+            Current: <strong>{resetLoginClient?.ownerId?.email}</strong>
+          </p>
+          <div>
+            <Label>New Login Email</Label>
+            <Input
+              className="mt-1"
+              type="email"
+              value={newLoginEmail}
+              onChange={(e) => setNewLoginEmail(e.target.value)}
+              placeholder="new@email.com"
+            />
+          </div>
+          <Button
+            className="w-full mt-2"
+            onClick={() => resetLoginMut.mutate({ id: resetLoginClient._id, newEmail: newLoginEmail })}
+            disabled={resetLoginMut.isPending || !newLoginEmail.trim()}
+          >
+            {resetLoginMut.isPending ? 'Updating…' : 'Update Login ID'}
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Send Message modal ───────────────────────────────────── */}
+      <Dialog open={msgOpen} onOpenChange={setMsgOpen}>
+        <DialogContent className="z-[9999]">
+          <DialogHeader>
+            <DialogTitle>Send Message — {msgClient?.businessName}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-400 mb-3 flex items-center gap-1.5">
+            <Mail className="h-3.5 w-3.5" />
+            Will be sent to: <strong>{msgClient?.ownerId?.email || msgClient?.email || '—'}</strong>
+          </p>
+          <div className="space-y-3">
+            <div>
+              <Label>Subject</Label>
+              <Input className="mt-1" value={msgSubject} onChange={(e) => setMsgSubject(e.target.value)} placeholder="Message subject…" />
+            </div>
+            <div>
+              <Label>Message</Label>
+              <textarea
+                className="mt-1 w-full border border-input rounded-lg px-3 py-2 text-sm resize-none outline-none focus:ring-2 focus:ring-gray-200 min-h-[120px]"
+                value={msgBody}
+                onChange={(e) => setMsgBody(e.target.value)}
+                placeholder="Type your message…"
+              />
+            </div>
+            {/* Channel indicator */}
+            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100 text-sm text-blue-700">
+              <Mail className="h-4 w-4 shrink-0" />
+              This will be sent as an email to the client owner.
+            </div>
+            <Button
+              className="w-full gap-2"
+              onClick={() => messageMut.mutate({ id: msgClient._id, subject: msgSubject, message: msgBody })}
+              disabled={messageMut.isPending || !msgSubject.trim() || !msgBody.trim()}
+            >
+              {messageMut.isPending ? 'Sending…' : <><Send className="h-4 w-4" /> Send Message</>}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -399,9 +602,9 @@ export default function AdminClients() {
       </div>
 
       {/* ── Table ────────────────────────────────────────────────── */}
-      <Card className="border-0 shadow-sm overflow-hidden">
+      <Card className="border-0 shadow-sm overflow-visible">
         {/* Table header */}
-        <div className="hidden md:grid grid-cols-[2fr_2fr_1fr_1fr_40px] items-center gap-4 px-4 py-3 border-b border-gray-100 bg-gray-50">
+        <div className="hidden md:grid grid-cols-[2fr_2fr_1fr_1fr_44px] items-center gap-4 px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-xl">
           <SortHeader label="Business Name" field="businessName" sort={sort} onSort={toggleSort} />
           <SortHeader label="Category" field="category" sort={sort} onSort={toggleSort} />
           <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Owner</span>
@@ -425,9 +628,9 @@ export default function AdminClients() {
             {filtered.map((b) => (
               <div
                 key={b._id}
-                className="grid md:grid-cols-[2fr_2fr_1fr_1fr_40px] items-center gap-4 px-4 py-3.5 hover:bg-gray-50 transition-colors"
+                className="grid md:grid-cols-[2fr_2fr_1fr_1fr_44px] items-center gap-4 px-4 py-3.5 hover:bg-gray-50 transition-colors"
               >
-                {/* Business name */}
+                {/* Business name + logo */}
                 <div className="flex items-center gap-3 min-w-0">
                   {b.businessLogo ? (
                     <img src={b.businessLogo} alt="" className="h-8 w-8 rounded-lg object-cover border border-gray-100 shrink-0" />
@@ -452,9 +655,7 @@ export default function AdminClients() {
                 <div>
                   <span className={cn(
                     'text-[11px] font-bold px-2.5 py-1 rounded-full',
-                    b.status === 'active'
-                      ? 'bg-green-50 text-green-700'
-                      : 'bg-gray-100 text-gray-500',
+                    b.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500',
                   )}>
                     {b.status === 'active' ? 'Active' : 'Inactive'}
                   </span>
@@ -465,14 +666,16 @@ export default function AdminClients() {
                   client={b}
                   onEdit={() => openEdit(b)}
                   onToggle={() => toggleMut.mutate(b._id)}
-                  onReset={() => toast(`Reset password for ${b.businessName}?`, {
+                  onMessage={() => openMessage(b)}
+                  onResetPassword={() => toast(`Reset password for ${b.businessName}?`, {
                     description: 'A new temporary password will be generated.',
                     action: { label: 'Yes, Reset', onClick: () => resetPwdMut.mutate(b._id) },
                     cancel: { label: 'Cancel', onClick: () => {} },
                     duration: 8000,
                   })}
+                  onResetLogin={() => openResetLogin(b)}
                   onDelete={() => toast(`Delete "${b.businessName}"?`, {
-                    description: 'This permanently deletes the business and all data.',
+                    description: 'Permanently deletes the business and all its data.',
                     action: { label: 'Yes, Delete', onClick: () => deleteMut.mutate(b._id) },
                     cancel: { label: 'Cancel', onClick: () => {} },
                     duration: 8000,
