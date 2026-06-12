@@ -87,7 +87,7 @@ function buildWAMessage(template, client, setPasswordUrl = null) {
       return [
         `Hi ${bizName},`,
         ``,
-        `Your Get Five Star account has been set up. Please find your login details below.`,
+        `Your GETMORE account has been set up. Please find your login details below.`,
         ``,
         `Business Name: ${bizName}`,
         `Login URL: ${loginUrl}`,
@@ -106,7 +106,7 @@ function buildWAMessage(template, client, setPasswordUrl = null) {
       return [
         `Hi ${bizName},`,
         ``,
-        `This is a reminder that your Get Five Star account setup is pending.`,
+        `This is a reminder that your GETMORE account setup is pending.`,
         ``,
         `Login URL: ${loginUrl}`,
         `Username: ${ownerEmail}`,
@@ -123,7 +123,7 @@ function buildWAMessage(template, client, setPasswordUrl = null) {
       return [
         `Hi ${bizName},`,
         ``,
-        `Your Get Five Star password has been reset.`,
+        `Your GETMORE password has been reset.`,
         ``,
         `Login URL: ${loginUrl}`,
         `Username: ${ownerEmail}`,
@@ -145,7 +145,7 @@ function buildSetupMessage({ businessName, loginUrl, email, setPasswordUrl, revi
   return [
     `Hi ${businessName},`,
     ``,
-    `Your Get Five Star account has been set up. Please find your login details below.`,
+    `Your GETMORE account has been set up. Please find your login details below.`,
     ``,
     `Business Name: ${businessName}`,
     `Login URL: ${loginUrl}`,

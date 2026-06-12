@@ -248,21 +248,23 @@ export default function ReviewPage() {
 
   /* ── Render ── */
   return (
-    <div className="min-h-screen bg-gradient-to-b from-yellow-50 via-background to-background">
+    <div className="min-h-screen bg-gradient-to-b from-[#FBBF24]/8 via-[#F8FAFC] to-[#F8FAFC]">
       <div className="container mx-auto max-w-xl px-4 py-10">
 
-        {/* Header */}
+        {/* Header — business branding only; no platform branding shown to customer */}
         <header className="text-center mb-8">
           {client.businessLogo ? (
             <img src={client.businessLogo} alt={client.businessName}
-              className="mx-auto h-16 w-16 rounded-full object-cover mb-3 shadow-md" />
+              className="mx-auto h-20 w-20 rounded-2xl object-cover mb-4 shadow-lg border border-gray-100" />
           ) : (
-            <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mb-3">
-              <span className="text-primary font-bold text-2xl">{(client.businessName || 'R')[0]}</span>
+            <div className="mx-auto h-20 w-20 rounded-2xl bg-[#111111] flex items-center justify-center mb-4 shadow-lg">
+              <span className="text-[#FBBF24] font-extrabold text-3xl leading-none">
+                {(client.businessName || 'B')[0].toUpperCase()}
+              </span>
             </div>
           )}
-          <h1 className="text-2xl font-bold">{client.businessName}</h1>
-          {client.address && <p className="text-sm text-muted-foreground mt-1">{client.address}</p>}
+          <h1 className="text-[26px] font-bold text-gray-900 leading-tight">{client.businessName}</h1>
+          {client.address && <p className="text-sm text-gray-400 mt-1.5">{client.address}</p>}
         </header>
 
         {/* ── Rate ── */}

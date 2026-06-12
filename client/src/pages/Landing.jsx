@@ -9,7 +9,7 @@ export default function Landing() {
       <header className="flex items-center justify-between px-6 py-4 border-b">
         <Link to="/" className="flex items-center gap-2 font-bold text-base">
           <Sparkles className="h-4 w-4 text-primary" />
-          Google Review Boost App
+          GETMORE
         </Link>
         <Link to="/login">
           <Button variant="outline" size="sm">Sign in</Button>
@@ -68,7 +68,7 @@ export default function Landing() {
       {/* Footer */}
       <footer className="py-6 text-center text-sm text-muted-foreground border-t">
         <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400 inline mr-1" />
-        © 2026 Google Review Boost App
+        © 2026 GETMORE
       </footer>
     </div>
   );

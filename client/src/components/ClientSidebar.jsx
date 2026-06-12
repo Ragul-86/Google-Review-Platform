@@ -25,9 +25,9 @@ const NAV = [
 
 export function ClientSidebar({ collapsed, mobileOpen, onClose }) {
   const { logout, user } = useAuth();
-  const navigate   = useNavigate();
+  const navigate    = useNavigate();
   const { pathname } = useLocation();
-  const client     = user?.client;
+  const client      = user?.client;
 
   const active = (to) => pathname === to || pathname.startsWith(to + '/');
 
@@ -38,127 +38,98 @@ export function ClientSidebar({ collapsed, mobileOpen, onClose }) {
     onClose?.();
   }
 
-  /* ─── shared item style ──────────────────────────────────────────── */
-  const itemBase = cn(
-    'relative flex items-center gap-3 w-full rounded-lg text-[15px] font-medium',
-    'transition-all duration-150 select-none cursor-pointer',
-    'h-[48px]',
-  );
-
-  const itemActive   = 'bg-gray-50 text-gray-900 font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.06)]';
-  const itemInactive = 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/70';
-
-  /* ─── collapsed icon-only wrapper ───────────────────────────────── */
+  const itemBase = [
+    'relative flex items-center gap-3 w-full rounded-xl text-[14px] font-medium',
+    'transition-all duration-150 select-none cursor-pointer h-[48px]',
+  ].join(' ');
   const collapsedBase = 'md:justify-center md:px-0 md:mx-auto md:w-11';
 
   return (
     <TooltipProvider delayDuration={0}>
-      {/* ── Mobile backdrop ───────────────────────────── */}
+      {/* Mobile backdrop */}
       <div
         onClick={onClose}
-        className={cn(
-          'fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300 md:hidden',
+        className={[
+          'fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 md:hidden',
           mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
-        )}
+        ].join(' ')}
       />
 
-      {/* ── Sidebar shell ─────────────────────────────── */}
+      {/* Sidebar shell */}
       <aside
-        className={cn(
+        className={[
           'fixed inset-y-0 left-0 z-50 flex flex-col h-screen',
-          'bg-white border-r border-gray-100 overflow-hidden shrink-0',
+          'bg-[#111111] overflow-hidden shrink-0',
           'transition-all duration-300 ease-in-out',
-          /* desktop — stay in flex flow */
           'md:relative md:z-auto md:translate-x-0',
           collapsed ? 'md:w-[72px]' : 'md:w-[280px]',
-          /* mobile drawer */
           'w-[280px]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
-        )}
+        ].join(' ')}
       >
-
-        {/* ── Brand area ────────────────────────────────── */}
+        {/* Brand area */}
         <div
-          className={cn(
-            'flex items-center shrink-0 border-b border-gray-100',
-            collapsed
-              ? 'md:flex-col md:justify-center md:py-5 md:px-0 px-5 py-5 gap-3'
-              : 'px-5 py-5 gap-4',
-          )}
+          className={[
+            'flex items-center shrink-0 border-b border-white/[0.08]',
+            collapsed ? 'md:flex-col md:justify-center md:py-5 md:px-0 px-5 py-5 gap-3' : 'px-5 py-5 gap-4',
+          ].join(' ')}
         >
-          {/* Logo — 48px */}
           {client?.businessLogo ? (
             <img
               src={client.businessLogo}
               alt={client.businessName}
-              className="h-12 w-12 rounded-xl object-cover border border-gray-200 shadow-sm shrink-0"
+              className="h-11 w-11 rounded-xl object-cover border-2 border-[#FBBF24]/40 shadow-lg shrink-0"
             />
           ) : (
-            <div
-              className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10
-                         border border-primary/20 flex items-center justify-center shrink-0"
-            >
-              <span className="text-primary font-bold text-[22px] leading-none">
-                {(client?.businessName || 'R')[0].toUpperCase()}
+            <div className="h-11 w-11 rounded-xl bg-[#FBBF24] flex items-center justify-center shrink-0 shadow-lg">
+              <span className="text-[#111111] font-extrabold text-[20px] leading-none">
+                {(client?.businessName || 'B')[0].toUpperCase()}
               </span>
             </div>
           )}
-
-          {/* Name + subtitle — hidden on desktop collapsed */}
-          <div className={cn('min-w-0 flex-1 overflow-hidden', collapsed && 'md:hidden')}>
-            <p className="font-bold text-gray-900 text-[15px] leading-tight break-words line-clamp-2">
+          <div className={['min-w-0 flex-1 overflow-hidden', collapsed ? 'md:hidden' : ''].join(' ')}>
+            <p className="font-bold text-white text-[14px] leading-tight break-words line-clamp-2">
               {client?.businessName || 'My Business'}
             </p>
-            <p className="text-[12px] text-gray-400 mt-0.5">Business Dashboard</p>
+            <p className="text-[11px] text-[#FBBF24]/70 mt-0.5 font-medium">Business Dashboard</p>
           </div>
         </div>
 
-        {/* ── Navigation ────────────────────────────────── */}
-        <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
           {NAV.map((item) => {
             const isActive = active(item.to);
             return (
               <Tooltip key={item.to}>
                 <TooltipTrigger asChild>
-                  {/* Relative wrapper for left-border indicator */}
                   <div className="relative">
-                    {/* Active left indicator — only on expanded desktop */}
-                    {isActive && (
-                      <span
-                        className={cn(
-                          'absolute left-0 top-[7px] bottom-[7px] w-[3px] bg-primary rounded-r-full',
-                          collapsed && 'md:hidden',
-                        )}
-                      />
+                    {isActive && !collapsed && (
+                      <span className="absolute left-0 top-[8px] bottom-[8px] w-[3px] bg-[#FBBF24] rounded-r-full" />
                     )}
                     <NavLink
                       to={item.to}
                       onClick={onClose}
-                      className={cn(
+                      className={[
                         itemBase,
-                        isActive ? itemActive : itemInactive,
-                        /* expanded: left indent to clear indicator */
-                        !collapsed && isActive ? 'pl-4 pr-3' : 'px-3',
-                        /* desktop collapsed: center icon */
-                        collapsed && collapsedBase,
-                      )}
+                        isActive
+                          ? 'bg-white/[0.08] text-[#FBBF24] font-semibold pl-5 pr-3'
+                          : 'text-white/55 hover:text-white hover:bg-white/[0.06] px-3',
+                        collapsed ? collapsedBase : '',
+                      ].join(' ')}
                     >
                       <item.icon
-                        className={cn(
-                          'shrink-0 transition-colors',
-                          isActive ? 'text-gray-900' : 'text-gray-400',
-                        )}
+                        className={isActive ? 'shrink-0 text-[#FBBF24]' : 'shrink-0 text-white/45'}
                         size={20}
                         strokeWidth={isActive ? 2.2 : 1.75}
                       />
-                      <span className={cn('truncate leading-none', collapsed && 'md:hidden')}>
+                      <span className={['truncate leading-none', collapsed ? 'md:hidden' : ''].join(' ')}>
                         {item.label}
                       </span>
                     </NavLink>
                   </div>
                 </TooltipTrigger>
                 {collapsed && (
-                  <TooltipContent side="right" className="hidden md:flex font-medium text-xs">
+                  <TooltipContent side="right" className="hidden md:flex font-medium text-xs bg-[#111111] text-white border-white/10">
                     {item.label}
                   </TooltipContent>
                 )}
@@ -167,63 +138,41 @@ export function ClientSidebar({ collapsed, mobileOpen, onClose }) {
           })}
         </nav>
 
-        {/* ── Sidebar footer — DMAX branding + Logout ───── */}
-        <div className="shrink-0 border-t border-gray-100 px-3 pt-3 pb-3 space-y-1">
-
-          {/* Powered by DMAX */}
+        {/* Footer */}
+        <div className="shrink-0 border-t border-white/[0.08] px-3 pt-3 pb-3 space-y-1">
           <Tooltip>
             <TooltipTrigger asChild>
-              <div
-                className={cn(
-                  'flex items-center gap-2.5 px-3 py-2 rounded-lg',
-                  collapsed && 'md:justify-center md:px-0',
-                )}
-              >
-                {/* DMAX logo — 28px height */}
-                <img
-                  src="/dmax-logo.png"
-                  alt="DMAX"
-                  className="h-7 w-auto shrink-0 opacity-70"
-                />
-                <div className={cn('min-w-0 overflow-hidden', collapsed && 'md:hidden')}>
-                  <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider leading-none">
-                    Powered by
-                  </p>
-                  <p className="text-[12px] font-bold text-gray-500 leading-tight mt-0.5">
-                    DMAX
-                  </p>
+              <div className={['flex items-center gap-2.5 px-3 py-2', collapsed ? 'md:justify-center md:px-0' : ''].join(' ')}>
+                <img src="/dmax-logo.png" alt="DMAX" className="h-6 w-auto shrink-0 opacity-55" />
+                <div className={['min-w-0 overflow-hidden', collapsed ? 'md:hidden' : ''].join(' ')}>
+                  <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest leading-none">Powered by</p>
+                  <p className="text-[12px] font-bold text-white/50 leading-tight mt-0.5">DMAX</p>
                 </div>
               </div>
             </TooltipTrigger>
             {collapsed && (
-              <TooltipContent side="right" className="hidden md:flex text-xs">
+              <TooltipContent side="right" className="hidden md:flex text-xs bg-[#111111] text-white border-white/10">
                 Powered by DMAX
               </TooltipContent>
             )}
           </Tooltip>
 
-          {/* Logout */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={handleLogout}
-                className={cn(
+                className={[
                   itemBase,
-                  'text-gray-500 hover:text-red-600 hover:bg-red-50',
-                  'px-3',
-                  collapsed && collapsedBase,
-                )}
+                  'text-white/40 hover:text-red-400 hover:bg-red-500/10 px-3',
+                  collapsed ? collapsedBase : '',
+                ].join(' ')}
               >
-                <LogOut
-                  className="shrink-0 text-gray-400"
-                  size={20}
-                  strokeWidth={1.75}
-                />
-                <span className={cn('truncate', collapsed && 'md:hidden')}>Logout</span>
+                <LogOut className="shrink-0 text-white/35" size={20} strokeWidth={1.75} />
+                <span className={['truncate', collapsed ? 'md:hidden' : ''].join(' ')}>Logout</span>
               </button>
             </TooltipTrigger>
             {collapsed && (
-              <TooltipContent side="right" className="hidden md:flex font-medium text-xs">
+              <TooltipContent side="right" className="hidden md:flex font-medium text-xs bg-[#111111] text-white border-white/10">
                 Logout
               </TooltipContent>
             )}
