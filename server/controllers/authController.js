@@ -36,7 +36,7 @@ const login = asyncHandler(async (req, res) => {
   // Fetch client info if clientadmin
   let clientData = null;
   if (user.role === 'clientadmin' && user.clientId) {
-    clientData = await Client.findById(user.clientId).select('businessName slug status googleReviewLink businessLogo');
+    clientData = await Client.findById(user.clientId).select('businessName slug status onboardingStatus googleReviewLink businessLogo');
   }
 
   res.json({

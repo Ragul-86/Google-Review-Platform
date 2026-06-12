@@ -1,13 +1,150 @@
-import { useQuery } from '@tanstack/react-query';
-import { customersAPI } from '@/api';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { customersAPI, clientsAPI } from '@/api';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Users, MessageCircle, Star, MessageSquare,
   TrendingUp, BarChart3, ArrowUpRight,
+  CheckCircle2, Circle, Rocket, AlertTriangle,
+  Building2, Wrench, Tags, Globe, QrCode, Phone,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+
+/* ── Onboarding status config ─────────────────────────────────── */
+const ONBOARDING_CONFIG = {
+  draft:             { label: 'Draft',             color: 'bg-yellow-100 text-yellow-800 border-yellow-200', dot: 'bg-yellow-400' },
+  awaiting_approval: { label: 'Awaiting Approval', color: 'bg-orange-100 text-orange-800 border-orange-200', dot: 'bg-orange-400' },
+  changes_requested: { label: 'Changes Requested', color: 'bg-red-100 text-red-800 border-red-200',    dot: 'bg-red-500' },
+  live:              { label: 'Live',              color: 'bg-green-100 text-green-800 border-green-200', dot: 'bg-green-500' },
+  inactive:          { label: 'Inactive',          color: 'bg-gray-100 text-gray-600 border-gray-200',  dot: 'bg-gray-400' },
+};
+
+/* ── Setup Verification Card ───────────────────────────────────── */
+function SetupVerificationCard({ client, onApprove, onRequestChanges, isPending }) {
+  const [checks, setChecks] = useState({
+    businessName: false, services: false, categories: false,
+    googleUrl: false, qrCode: false, contact: false,
+  });
+  const navigate = useNavigate();
+
+  const CHECKLIST = [
+    { key: 'businessName', label: 'Business Name Correct',     icon: Building2 },
+    { key: 'services',     label: 'Services Correct',          icon: Wrench },
+    { key: 'categories',   label: 'Categories Correct',        icon: Tags },
+    { key: 'googleUrl',    label: 'Google Review URL Working', icon: Globe },
+    { key: 'qrCode',       label: 'QR Code Working',           icon: QrCode },
+    { key: 'contact',      label: 'Contact Details Correct',   icon: Phone },
+  ];
+  const checkedCount = Object.values(checks).filter(Boolean).length;
+  const allChecked   = checkedCount === CHECKLIST.length;
+
+  const onboardingCfg = ONBOARDING_CONFIG[client?.onboardingStatus || 'draft'];
+
+  return (
+    <Card className="border-0 shadow-sm border-l-4 border-l-blue-500 overflow-hidden">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <Rocket className="h-4 w-4 text-blue-500" />
+              <h2 className="text-[15px] font-bold text-gray-900">Setup Verification</h2>
+            </div>
+            <p className="text-xs text-gray-400">Verify all details below before approving your account setup.</p>
+          </div>
+          <span className={cn(
+            'text-[11px] font-bold px-2.5 py-1 rounded-full border flex items-center gap-1.5',
+            onboardingCfg.color,
+          )}>
+            <span className={cn('h-1.5 w-1.5 rounded-full', onboardingCfg.dot)} />
+            {onboardingCfg.label}
+          </span>
+        </div>
+
+        {/* Status message for changes_requested */}
+        {client?.onboardingStatus === 'changes_requested' && (
+          <div className="mb-4 flex items-start gap-2 p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>You've requested changes. Once the admin updates your setup, please verify again and approve.</span>
+          </div>
+        )}
+
+        {/* Checklist */}
+        <div className="space-y-2 mb-4">
+          {CHECKLIST.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setChecks((c) => ({ ...c, [key]: !c[key] }))}
+              className={cn(
+                'w-full flex items-center gap-3 p-2.5 rounded-xl border transition-all text-left',
+                checks[key]
+                  ? 'bg-green-50 border-green-200 text-green-800'
+                  : 'bg-gray-50 border-gray-100 text-gray-600 hover:border-gray-200',
+              )}
+            >
+              {checks[key]
+                ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                : <Circle className="h-4 w-4 text-gray-300 shrink-0" />}
+              <Icon className="h-3.5 w-3.5 shrink-0 opacity-60" />
+              <span className="text-sm font-medium">{label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Progress */}
+        <div className="mb-4">
+          <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+            <span>{checkedCount}/{CHECKLIST.length} verified</span>
+            {allChecked && <span className="text-green-600 font-semibold">All items verified ✓</span>}
+          </div>
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className={cn('h-full rounded-full transition-all duration-500', allChecked ? 'bg-green-500' : 'bg-blue-400')}
+              style={{ width: `${(checkedCount / CHECKLIST.length) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            className="gap-2 bg-green-600 hover:bg-green-700"
+            onClick={onApprove}
+            disabled={!allChecked || isPending}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Approve Setup
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+            onClick={onRequestChanges}
+            disabled={isPending}
+          >
+            <AlertTriangle className="h-4 w-4" />
+            Request Changes
+          </Button>
+          <Button
+            variant="ghost"
+            className="gap-2 text-gray-500 ml-auto"
+            onClick={() => navigate('/client/settings')}
+          >
+            Open Settings →
+          </Button>
+        </div>
+        {!allChecked && (
+          <p className="text-[11px] text-gray-400 mt-2">
+            Tick all 6 items to enable the Approve button.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 /* ── Time-based greeting ───────────────────────────────────────── */
 function getGreeting() {
@@ -77,12 +214,29 @@ function FunnelRow({ label, count, total, color, pctBase }) {
 
 /* ══════════════════════════════════════════════════════════════ */
 export default function ClientDashboard() {
-  const { user } = useAuth();
-  const businessName = user?.client?.businessName || 'Business';
+  const { user, updateUser } = useAuth();
+  const qc               = useQueryClient();
+  const businessName     = user?.client?.businessName || 'Business';
+  const onboardingStatus = user?.client?.onboardingStatus || 'draft';
+  const showSetupCard    = onboardingStatus !== 'live';
 
   const { data, isLoading } = useQuery({
     queryKey: ['customer-analytics'],
     queryFn: () => customersAPI.getAnalytics().then((r) => r.data.data),
+  });
+
+  const onboardingMut = useMutation({
+    mutationFn: (action) => clientsAPI.onboardingAction(action),
+    onSuccess: (res, action) => {
+      const newStatus = res.data.data?.onboardingStatus;
+      updateUser?.({ client: { ...user?.client, onboardingStatus: newStatus } });
+      if (action === 'approve') {
+        toast.success('Setup Approved — your account is now Live!');
+      } else {
+        toast.success('Changes requested — the admin has been notified.');
+      }
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'Action failed'),
   });
 
   const d = data ?? {};
@@ -162,6 +316,16 @@ export default function ClientDashboard() {
           </div>
         )}
       </div>
+
+      {/* ── Setup Verification Card (shown until status = live) ─── */}
+      {showSetupCard && (
+        <SetupVerificationCard
+          client={user?.client}
+          onApprove={() => onboardingMut.mutate('approve')}
+          onRequestChanges={() => onboardingMut.mutate('request_changes')}
+          isPending={onboardingMut.isPending}
+        />
+      )}
 
       {/* ── KPI grid ───────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">

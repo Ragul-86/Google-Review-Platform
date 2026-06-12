@@ -10,6 +10,7 @@ import { ClientLayout } from '@/layouts/ClientLayout';
 
 // Auth pages
 import Login from '@/pages/auth/Login';
+import SetPassword from '@/pages/auth/SetPassword';
 
 // Admin pages
 import AdminDashboard from '@/pages/admin/Dashboard';
@@ -59,6 +60,7 @@ export default function App() {
 
               {/* Auth */}
               <Route path="/login" element={<Login />} />
+              <Route path="/set-password" element={<SetPassword />} />
 
               {/* Public review page */}
               <Route path="/review/:slug" element={<ReviewPage />} />

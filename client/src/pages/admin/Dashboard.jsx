@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { analyticsAPI } from '@/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,8 +7,22 @@ import {
   Building2, MessageSquare, ThumbsUp, ThumbsDown,
   QrCode, Star, TrendingUp, BarChart3,
   Activity, Users, CheckCircle2, AlertCircle, Gauge,
+  Heart, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { cn, formatDateTime } from '@/lib/utils';
+
+/* ── Onboarding status badge ─────────────────────────────────── */
+const ONBOARDING = {
+  draft:             { label: 'Draft',             cls: 'bg-yellow-50 text-yellow-700' },
+  awaiting_approval: { label: 'Awaiting',          cls: 'bg-orange-50 text-orange-700' },
+  changes_requested: { label: 'Changes Req.',      cls: 'bg-red-50 text-red-700' },
+  live:              { label: 'Live',              cls: 'bg-green-50 text-green-700' },
+  inactive:          { label: 'Inactive',          cls: 'bg-gray-100 text-gray-500' },
+};
+function OBadge({ status }) {
+  const cfg = ONBOARDING[status] ?? ONBOARDING.draft;
+  return <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide', cfg.cls)}>{cfg.label}</span>;
+}
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid,
@@ -275,6 +290,82 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Client Health Table ──────────────────────────────────── */}
+      <ClientHealthCard health={ov.clientHealth ?? []} loading={ovLoading} />
     </div>
+  );
+}
+
+/* ── Client Health Table ─────────────────────────────────────── */
+function ClientHealthCard({ health, loading }) {
+  const [expanded, setExpanded] = useState(false);
+  const display = expanded ? health : health.slice(0, 8);
+
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Heart className="h-4 w-4 text-gray-400" />
+            <CardTitle className="text-sm font-bold text-gray-900">Client Health</CardTitle>
+          </div>
+          {health.length > 8 && (
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-0.5"
+            >
+              {expanded
+                ? <><ChevronUp className="h-3 w-3" /> Show less</>
+                : <><ChevronDown className="h-3 w-3" /> Show all ({health.length})</>}
+            </button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0 overflow-x-auto">
+        {loading ? <Skeleton className="h-40" /> : health.length === 0 ? (
+          <div className="py-8 text-center text-sm text-gray-300">No clients yet</div>
+        ) : (
+          <table className="w-full text-sm min-w-[640px]">
+            <thead>
+              <tr className="border-b border-gray-100">
+                {['Business', 'Reviews', 'Feedback', 'Conversion', 'Last Activity', 'Status'].map((h) => (
+                  <th key={h} className="pb-2.5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider pr-4 last:pr-0">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {display.map((c) => (
+                <tr key={c._id} className="hover:bg-gray-50/60 transition-colors">
+                  <td className="py-2.5 pr-4 font-semibold text-gray-900 max-w-[180px] truncate">{c.businessName}</td>
+                  <td className="py-2.5 pr-4 text-green-700 font-bold tabular-nums">{c.totalReviews}</td>
+                  <td className="py-2.5 pr-4 text-orange-600 font-bold tabular-nums">{c.totalFeedback}</td>
+                  <td className="py-2.5 pr-4 tabular-nums">
+                    <span className={cn(
+                      'font-bold text-xs',
+                      c.conversionRate >= 50 ? 'text-green-600'
+                        : c.conversionRate >= 20 ? 'text-amber-600'
+                        : 'text-gray-400',
+                    )}>
+                      {c.conversionRate}%
+                    </span>
+                  </td>
+                  <td className="py-2.5 pr-4 text-gray-400 text-xs whitespace-nowrap">
+                    {c.lastActivity
+                      ? new Date(c.lastActivity).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                      : '—'}
+                  </td>
+                  <td className="py-2.5">
+                    <OBadge status={c.onboardingStatus} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </CardContent>
+    </Card>
   );
 }

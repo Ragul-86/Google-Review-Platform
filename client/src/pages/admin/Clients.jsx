@@ -270,7 +270,14 @@ export default function AdminClients() {
       setCreateOpen(false);
       const savedEmail = form.ownerEmail;
       setForm(EMPTY);
-      if (res.data.tempPassword) setCreds({ email: savedEmail, password: res.data.tempPassword });
+      if (res.data.setPasswordUrl || res.data.tempPassword) {
+        setCreds({
+          email: savedEmail,
+          setPasswordUrl: res.data.setPasswordUrl || null,
+          loginUrl: `${window.location.origin}/login`,
+        });
+        setCredsOpen(true);
+      }
       qc.invalidateQueries({ queryKey: ['clients'] });
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'Failed to create client'),
@@ -309,7 +316,11 @@ export default function AdminClients() {
   const resetPwdMut = useMutation({
     mutationFn: (id) => clientsAPI.resetPassword(id),
     onSuccess: (res) => {
-      setCreds({ email: res.data.email, password: res.data.tempPassword });
+      setCreds({
+        email: res.data.email,
+        setPasswordUrl: res.data.setPasswordUrl || null,
+        loginUrl: `${window.location.origin}/login`,
+      });
       setCredsOpen(true);
       toast.success('Password reset successfully');
     },
@@ -484,21 +495,54 @@ export default function AdminClients() {
 
       {/* ── Credentials modal ────────────────────────────────────── */}
       <Dialog open={credsOpen} onOpenChange={(o) => { if (!o) { setCredsOpen(false); setCreds(null); } }}>
-        <DialogContent className="z-[9999]">
-          <DialogHeader><DialogTitle>Owner credentials</DialogTitle></DialogHeader>
-          <p className="text-sm text-gray-500 mb-3">Save these — password won't be shown again.</p>
-          <div className="space-y-2 font-mono text-sm bg-gray-50 border border-gray-100 p-4 rounded-xl">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-gray-700 truncate">Email: <strong>{creds?.email}</strong></span>
-              <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(creds?.email??''); toast.success('Copied'); }}><Copy className="h-3.5 w-3.5" /></Button>
+        <DialogContent className="z-[9999] max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Client Setup Credentials</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-500 mb-3">
+            Share these details with the client via WhatsApp. The set-password link expires in 48 hours.
+          </p>
+          <div className="space-y-3 text-sm bg-gray-50 border border-gray-100 p-4 rounded-xl">
+            {/* Login Email */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Login Email (Username)</p>
+                <p className="font-mono font-bold text-gray-900 break-all">{creds?.email}</p>
+              </div>
+              <Button size="sm" variant="ghost" className="shrink-0" onClick={() => { navigator.clipboard.writeText(creds?.email??''); toast.success('Email copied'); }}><Copy className="h-3.5 w-3.5" /></Button>
             </div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-gray-700">Password: <strong>{creds?.password}</strong></span>
-              <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(creds?.password??''); toast.success('Copied'); }}><Copy className="h-3.5 w-3.5" /></Button>
+            {/* Login URL */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Login URL</p>
+                <p className="font-mono text-gray-700 break-all">{creds?.loginUrl}</p>
+              </div>
+              <Button size="sm" variant="ghost" className="shrink-0" onClick={() => { navigator.clipboard.writeText(creds?.loginUrl??''); toast.success('Login URL copied'); }}><Copy className="h-3.5 w-3.5" /></Button>
             </div>
+            {/* Set Password Link */}
+            {creds?.setPasswordUrl && (
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Set Password Link (48h)</p>
+                  <p className="font-mono text-xs text-blue-600 break-all">{creds.setPasswordUrl}</p>
+                </div>
+                <Button size="sm" variant="ghost" className="shrink-0" onClick={() => { navigator.clipboard.writeText(creds.setPasswordUrl); toast.success('Set-password link copied'); }}><Copy className="h-3.5 w-3.5" /></Button>
+              </div>
+            )}
           </div>
-          <Button className="w-full mt-2" onClick={() => { navigator.clipboard.writeText(`Email: ${creds?.email}\nPassword: ${creds?.password}`); toast.success('Copied all'); }}>
-            Copy all credentials
+          <Button
+            className="w-full mt-2"
+            onClick={() => {
+              const msg = [
+                `Login URL: ${creds?.loginUrl}`,
+                `Username: ${creds?.email}`,
+                creds?.setPasswordUrl ? `Set Password: ${creds.setPasswordUrl}` : '',
+              ].filter(Boolean).join('\n');
+              navigator.clipboard.writeText(msg);
+              toast.success('All credentials copied');
+            }}
+          >
+            <Copy className="h-4 w-4 mr-2" /> Copy All for WhatsApp
           </Button>
         </DialogContent>
       </Dialog>

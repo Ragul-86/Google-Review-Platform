@@ -1,9 +1,10 @@
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
-const Review = require('../models/Review');
+const Review   = require('../models/Review');
 const Feedback = require('../models/Feedback');
-const QRCode = require('../models/QRCode');
-const Client = require('../models/Client');
+const QRCode   = require('../models/QRCode');
+const Client   = require('../models/Client');
+const Customer = require('../models/Customer');
 
 // @desc    Get analytics for admin or client
 // @route   GET /api/analytics
@@ -152,6 +153,36 @@ const getAdminOverview = asyncHandler(async (req, res) => {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 10);
 
+  // ── Client health table: per-client review/feedback counts + last activity
+  const allClients = await Client.find().select('businessName onboardingStatus status slug createdAt').lean();
+
+  const clientHealth = await Promise.all(allClients.map(async (c) => {
+    const cid = c._id;
+    const [reviews, feedback, waSent, customers, lastReview, lastFeedback] = await Promise.all([
+      Review.countDocuments({ clientId: cid, type: 'positive' }),
+      Feedback.countDocuments({ clientId: cid }),
+      Customer.countDocuments({ clientId: cid, whatsappStatus: { $in: ['sent', 'clicked', 'reviewed'] } }),
+      Customer.countDocuments({ clientId: cid }),
+      Review.findOne({ clientId: cid }).sort({ createdAt: -1 }).select('createdAt').lean(),
+      Feedback.findOne({ clientId: cid }).sort({ createdAt: -1 }).select('createdAt').lean(),
+    ]);
+    const totalResponses  = reviews + feedback;
+    const conversionRate  = waSent > 0 ? Math.round((totalResponses / waSent) * 100) : 0;
+    const lastActivity = [lastReview?.createdAt, lastFeedback?.createdAt]
+      .filter(Boolean).sort((a, b) => new Date(b) - new Date(a))[0] || null;
+    return {
+      _id: cid,
+      businessName:     c.businessName,
+      onboardingStatus: c.onboardingStatus || 'draft',
+      status:           c.status,
+      totalReviews:     reviews,
+      totalFeedback:    feedback,
+      conversionRate,
+      customers,
+      lastActivity,
+    };
+  }));
+
   res.json({
     success: true,
     data: {
@@ -161,6 +192,7 @@ const getAdminOverview = asyncHandler(async (req, res) => {
       platformScore,
       topClients,
       recentActivity: activity,
+      clientHealth,
       // keep for backward compat
       recentReviews: recentReviews.slice(0, 5),
     },

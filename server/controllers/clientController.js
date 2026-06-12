@@ -1,14 +1,27 @@
-const asyncHandler = require('express-async-handler');
-const Client = require('../models/Client');
-const User = require('../models/User');
-const Category = require('../models/Category');
-const Review = require('../models/Review');
-const Feedback = require('../models/Feedback');
-const QRCode = require('../models/QRCode');
-const slugify = require('../utils/slugify');
-const { sendWelcomeEmail } = require('../services/emailService');
+const asyncHandler  = require('express-async-handler');
+const crypto        = require('crypto');
+const Client        = require('../models/Client');
+const User          = require('../models/User');
+const Category      = require('../models/Category');
+const Review        = require('../models/Review');
+const Feedback      = require('../models/Feedback');
+const QRCode        = require('../models/QRCode');
+const slugify       = require('../utils/slugify');
+const { sendEmail } = require('../services/emailService');
 const { seedDefaultTemplate } = require('./whatsappTemplateController');
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateToken');
+
+const ONBOARDING_LABELS = {
+  draft:             '🟡 Draft',
+  awaiting_approval: '🟠 Awaiting Approval',
+  changes_requested: '🔴 Changes Requested',
+  live:              '🟢 Live',
+  inactive:          '⚫ Inactive',
+};
+
+function generateSetPasswordToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
 
 // Default categories by business type
 const CATEGORY_TEMPLATES = {
@@ -81,13 +94,22 @@ const createClient = asyncHandler(async (req, res) => {
     tempPassword = generatePassword();
     // Pass plain text — User pre-save hook hashes it (avoid double-hash)
     owner = await User.create({
-      name: ownerName,
-      email: ownerEmail.toLowerCase(),
+      name:     ownerName,
+      email:    ownerEmail.toLowerCase(),
       password: tempPassword,
-      role: 'clientadmin',
+      role:     'clientadmin',
       isActive: true,
     });
   }
+
+  // Generate set-password token (48 h) — used in WhatsApp setup message
+  const spToken = generateSetPasswordToken();
+  owner.setPasswordToken  = spToken;
+  owner.setPasswordExpire = Date.now() + 48 * 60 * 60 * 1000;
+  await owner.save({ validateBeforeSave: false });
+
+  const clientUrl      = process.env.CLIENT_URL || 'http://localhost:5173';
+  const setPasswordUrl = `${clientUrl}/set-password?token=${spToken}&email=${encodeURIComponent(ownerEmail.toLowerCase())}`;
 
   const client = await Client.create({
     businessName, slug, businessCategory,
@@ -97,6 +119,7 @@ const createClient = asyncHandler(async (req, res) => {
     subscriptionPlan: subscriptionPlan || 'free',
     ownerId: owner._id,
     status: 'active',
+    onboardingStatus: 'draft',
     businessLogo: req.file ? `/uploads/${req.file.filename}` : (req.body.businessLogo || null),
   });
 
@@ -114,20 +137,13 @@ const createClient = asyncHandler(async (req, res) => {
     name, clientId: client._id, isEnabled: true, sortOrder: idx,
   })));
 
-  // Send welcome email
-  if (tempPassword) {
-    sendWelcomeEmail({
-      to: ownerEmail,
-      name: ownerName,
-      email: ownerEmail,
-      tempPassword,
-      loginUrl: `${process.env.CLIENT_URL}/login`,
-    }).catch(() => {});
-  }
+  // NOTE: No email sent — WhatsApp only for V1. Admin shares credentials via WhatsApp.
 
   res.status(201).json({
     success: true,
     data: client,
+    ownerEmail: ownerEmail.toLowerCase(),
+    setPasswordUrl,
     tempPassword: tempPassword || undefined,
     message: 'Client created successfully',
   });
@@ -288,8 +304,102 @@ const sendClientMessage = asyncHandler(async (req, res) => {
   res.json({ success: true, sentTo: ownerEmail, channel, message: 'Message sent successfully' });
 });
 
+// ── @desc    Update onboarding status (Super Admin)
+// ── @route   PATCH /api/clients/:id/onboarding-status
+// ── @access  Super Admin
+const updateOnboardingStatus = asyncHandler(async (req, res) => {
+  const { onboardingStatus } = req.body;
+  const valid = ['draft', 'awaiting_approval', 'changes_requested', 'live', 'inactive'];
+  if (!valid.includes(onboardingStatus)) {
+    res.status(400); throw new Error(`onboardingStatus must be one of: ${valid.join(', ')}`);
+  }
+
+  const client = await Client.findById(req.params.id);
+  if (!client) { res.status(404); throw new Error('Client not found'); }
+
+  if (onboardingStatus === 'live' && !client.googleReviewLink?.trim()) {
+    res.status(422);
+    throw new Error('Cannot go Live — Google Review URL is not configured for this client.');
+  }
+
+  client.onboardingStatus = onboardingStatus;
+  await client.save();
+
+  res.json({
+    success: true,
+    data: { onboardingStatus: client.onboardingStatus },
+    label: ONBOARDING_LABELS[onboardingStatus],
+  });
+});
+
+// ── @desc    Client self-service onboarding action (approve/request_changes)
+// ── @route   PATCH /api/clients/me/onboarding
+// ── @access  Client Admin
+const clientOnboardingAction = asyncHandler(async (req, res) => {
+  const { action } = req.body;
+  if (!['approve', 'request_changes'].includes(action)) {
+    res.status(400); throw new Error("action must be 'approve' or 'request_changes'");
+  }
+
+  const client = await Client.findById(req.user.clientId);
+  if (!client) { res.status(404); throw new Error('Business not found'); }
+
+  if (action === 'approve') {
+    if (!client.googleReviewLink?.trim()) {
+      res.status(422);
+      throw new Error('Cannot approve — Google Review URL is not configured. Add it in Settings first.');
+    }
+    client.onboardingStatus = 'live';
+  } else {
+    client.onboardingStatus = 'changes_requested';
+  }
+
+  await client.save();
+  res.json({
+    success: true,
+    data: { onboardingStatus: client.onboardingStatus },
+    label: ONBOARDING_LABELS[client.onboardingStatus],
+  });
+});
+
+// ── @desc    Set password via token (new client first-time setup)
+// ── @route   POST /api/auth/set-password
+// ── @access  Public
+const setPasswordViaToken = asyncHandler(async (req, res) => {
+  const { token, email, newPassword } = req.body;
+  if (!token || !email || !newPassword) {
+    res.status(400); throw new Error('token, email, and newPassword are required');
+  }
+  if (newPassword.length < 6) {
+    res.status(400); throw new Error('Password must be at least 6 characters');
+  }
+
+  const user = await User.findOne({ email: email.toLowerCase() })
+    .select('+setPasswordToken +setPasswordExpire');
+
+  if (!user || !user.setPasswordToken) {
+    res.status(400); throw new Error('Invalid or expired setup link');
+  }
+  if (user.setPasswordToken !== token) {
+    res.status(400); throw new Error('Invalid setup link');
+  }
+  if (user.setPasswordExpire < Date.now()) {
+    res.status(400); throw new Error('Setup link has expired. Please contact admin for a new link.');
+  }
+
+  user.password          = newPassword;  // hashed by pre-save hook
+  user.setPasswordToken  = undefined;
+  user.setPasswordExpire = undefined;
+  await user.save();
+
+  res.json({ success: true, message: 'Password set successfully. You can now log in.' });
+});
+
 module.exports = {
   getClients, getClientById, createClient, updateClient,
-  deleteClient, toggleClientStatus, getMyClient, updateMyClient,
+  deleteClient, toggleClientStatus,
+  updateOnboardingStatus, clientOnboardingAction,
+  getMyClient, updateMyClient,
   resetClientPassword, resetLoginId, sendClientMessage,
+  setPasswordViaToken,
 };

@@ -2,10 +2,11 @@ import API from './axios';
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 export const authAPI = {
-  login: (data) => API.post('/auth/login', data),
-  logout: () => API.post('/auth/logout'),
-  refresh: (refreshToken) => API.post('/auth/refresh', { refreshToken }),
-  me: () => API.get('/auth/me'),
+  login:       (data) => API.post('/auth/login', data),
+  logout:      () => API.post('/auth/logout'),
+  refresh:     (refreshToken) => API.post('/auth/refresh', { refreshToken }),
+  me:          () => API.get('/auth/me'),
+  setPassword: (data) => API.post('/auth/set-password', data),
 };
 
 // ─── Clients ─────────────────────────────────────────────────────────────────
@@ -19,8 +20,11 @@ export const clientsAPI = {
   resetPassword: (id) => API.post(`/clients/${id}/reset-password`),
   resetLoginId: (id, newEmail) => API.patch(`/clients/${id}/reset-login`, { newEmail }),
   sendMessage: (id, data) => API.post(`/clients/${id}/message`, data),
-  getMe: () => API.get('/clients/me'),
-  updateMe: (data) => API.put('/clients/me', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getMe:               () => API.get('/clients/me'),
+  updateMe:            (data) => API.put('/clients/me', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  // Onboarding status
+  updateOnboardingStatus: (id, onboardingStatus) => API.patch(`/clients/${id}/onboarding-status`, { onboardingStatus }),
+  onboardingAction:    (action) => API.patch('/clients/me/onboarding', { action }),
 };
 
 // ─── Categories ──────────────────────────────────────────────────────────────

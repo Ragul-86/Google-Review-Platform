@@ -32,6 +32,11 @@ const clientSchema = new mongoose.Schema(
       enum: ['active', 'inactive', 'suspended'],
       default: 'active',
     },
+    onboardingStatus: {
+      type: String,
+      enum: ['draft', 'awaiting_approval', 'changes_requested', 'live', 'inactive'],
+      default: 'draft',
+    },
     ownerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
