@@ -219,7 +219,7 @@ const updateMyClient = asyncHandler(async (req, res) => {
   res.json({ success: true, data: updated });
 });
 
-// @desc    Reset client owner password
+// @desc    Reset client owner password — generates secure set-password link (48h)
 // @route   POST /api/clients/:id/reset-password
 // @access  Super Admin
 const resetClientPassword = asyncHandler(async (req, res) => {
@@ -227,12 +227,18 @@ const resetClientPassword = asyncHandler(async (req, res) => {
   if (!client) { res.status(404); throw new Error('Client not found'); }
   if (!client.ownerId) { res.status(400); throw new Error('Client has no owner'); }
 
-  const tempPassword = generatePassword();
-  const owner = await User.findById(client.ownerId._id);
-  owner.password = tempPassword; // pre-save hook will hash it
-  await owner.save();
+  // Generate set-password token (48h) — never expose plain password
+  const spToken = generateSetPasswordToken();
+  const owner = await User.findById(client.ownerId._id)
+    .select('+setPasswordToken +setPasswordExpire');
+  owner.setPasswordToken  = spToken;
+  owner.setPasswordExpire = Date.now() + 48 * 60 * 60 * 1000;
+  await owner.save({ validateBeforeSave: false });
 
-  res.json({ success: true, tempPassword, email: owner.email });
+  const clientUrl      = process.env.CLIENT_URL || 'http://localhost:5173';
+  const setPasswordUrl = `${clientUrl}/set-password?token=${spToken}&email=${encodeURIComponent(owner.email)}`;
+
+  res.json({ success: true, setPasswordUrl, email: owner.email, message: 'Password reset link generated' });
 });
 
 // @desc    Reset client login ID (owner email)
