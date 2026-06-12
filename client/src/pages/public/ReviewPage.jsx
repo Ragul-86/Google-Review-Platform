@@ -13,38 +13,22 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-/* ── URL validation ──────────────────────────────────────────────
-   Accepted formats:
-     https://search.google.com/local/writereview?placeid=...
-     https://g.page/r/...../review
-     https://maps.google.com/...
-     https://maps.app.goo.gl/...
-     https://www.google.com/maps/...
-─────────────────────────────────────────────────────────────── */
+/* ── Google URL validation ─────────────────────────────────────── */
 const GOOGLE_REVIEW_HOSTS = [
-  'search.google.com',
-  'g.page',
-  'maps.google.com',
-  'maps.app.goo.gl',
-  'www.google.com',
-  'google.com',
+  'search.google.com', 'g.page', 'maps.google.com',
+  'maps.app.goo.gl', 'www.google.com', 'google.com',
 ];
-
 function validateGoogleUrl(url) {
   if (!url?.trim()) return { valid: false, reason: 'missing' };
   try {
     const u = new URL(url.trim());
     if (!['https:', 'http:'].includes(u.protocol)) return { valid: false, reason: 'invalid' };
-    const ok = GOOGLE_REVIEW_HOSTS.some(
-      (h) => u.hostname === h || u.hostname.endsWith('.' + h),
-    );
-    return ok ? { valid: true } : { valid: false, reason: 'invalid' };
-  } catch {
-    return { valid: false, reason: 'invalid' };
-  }
+    return GOOGLE_REVIEW_HOSTS.some((h) => u.hostname === h || u.hostname.endsWith('.' + h))
+      ? { valid: true } : { valid: false, reason: 'invalid' };
+  } catch { return { valid: false, reason: 'invalid' }; }
 }
 
-/* ── Clipboard helper ────────────────────────────────────────── */
+/* ── Clipboard ─────────────────────────────────────────────────── */
 async function copyToClipboard(text) {
   try {
     await navigator.clipboard.writeText(text);
@@ -63,10 +47,16 @@ async function copyToClipboard(text) {
   }
 }
 
+/* ── Submission key for localStorage ──────────────────────────── */
+function submissionKey(slug) { return `review_done_${slug}`; }
+function markDone(slug)       { try { localStorage.setItem(submissionKey(slug), '1'); } catch {} }
+function isDone(slug)         { try { return !!localStorage.getItem(submissionKey(slug)); } catch { return false; } }
+
+/* ════════════════════════════════════════════════════════════════ */
 export default function ReviewPage() {
   const { slug } = useParams();
 
-  /* ── State ──────────────────────────────────────────────── */
+  /* ── State ── */
   const [step, setStep]                 = useState('rate');
   const [rating, setRating]             = useState(0);
   const [hover, setHover]               = useState(0);
@@ -76,35 +66,40 @@ export default function ReviewPage() {
   const [suggestions, setSuggestions]   = useState([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [selectedService, setSelectedService]   = useState(null);
-  const [copyingIdx, setCopyingIdx]     = useState(null);   // loading state per card
-  const [copiedIdx, setCopiedIdx]       = useState(null);   // success state per card
+  const [selectedService,  setSelectedService]  = useState(null);
+  const [copyingIdx, setCopyingIdx] = useState(null);
+  const [copiedIdx,  setCopiedIdx]  = useState(null);
 
-  // Negative feedback form
-  const [name, setName]       = useState('');
+  // Negative feedback
+  const [name,    setName]    = useState('');
   const [contact, setContact] = useState('');
-  const [email, setEmail]     = useState('');
+  const [email,   setEmail]   = useState('');
   const [message, setMessage] = useState('');
 
   const qrToken    = new URLSearchParams(window.location.search).get('qr');
-  const customerId = new URLSearchParams(window.location.search).get('c');  // customer tracking token
+  const customerId = new URLSearchParams(window.location.search).get('c');
 
-  /* ── Data fetch ─────────────────────────────────────────── */
+  /* ── Data fetch ── */
   const { data, isLoading, isError } = useQuery({
     queryKey: ['public-client', slug],
     queryFn:  () => publicAPI.getClientBySlug(slug).then((r) => r.data.data),
     retry: false,
   });
 
-  /* ── Track "opened" once when review page loads successfully ── */
+  /* ── Check duplicate on mount — redirect to thankyou if already submitted ── */
+  useEffect(() => {
+    if (slug && isDone(slug)) setStep('thankyou');
+  }, [slug]);
+
+  /* ── Track "opened" once ── */
   const trackedOpen = useRef(false);
   useEffect(() => {
     if (!customerId || !data?.client || trackedOpen.current) return;
     trackedOpen.current = true;
     publicAPI.trackCustomer(customerId, 'opened').catch(() => {});
-  }, [customerId, data?.client?._id]);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [customerId, data?.client?._id]);  // eslint-disable-line
 
-  /* ── Loading / Error ────────────────────────────────────── */
+  /* ── Loading / Error ── */
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -124,9 +119,10 @@ export default function ReviewPage() {
   const { client, categories = [], services = [] } = data;
   const activeServices = services.filter((s) => s.status === 'active');
 
-  /* ── Handlers ───────────────────────────────────────────── */
+  /* ── Handlers ── */
   function handleRate(stars) {
     setRating(stars);
+    // Positive: must go through service (if any) and then category — no skip
     setStep(stars >= 4 ? (activeServices.length > 0 ? 'service' : 'category') : 'negative');
   }
 
@@ -135,12 +131,15 @@ export default function ReviewPage() {
     setStep('category');
   }
 
-  function skipService() {
-    setSelectedService(null);
-    setStep('category');
-  }
+  /* No skipService — service is REQUIRED */
 
   async function handleCategory(cat) {
+    // Validate: if services exist, one must be selected
+    if (activeServices.length > 0 && !selectedService) {
+      toast.error('Please select a service before continuing.');
+      setStep('service');
+      return;
+    }
     setSelectedCategory(cat);
     setLoadingSuggestions(true);
     setSuggestions([]);
@@ -161,55 +160,33 @@ export default function ReviewPage() {
     }
   }
 
-  /* ── Copy & Redirect ────────────────────────────────────────
-     Flow (single click, fully automatic):
-     1. Validate URL synchronously — abort immediately if missing/invalid
-     2. Copy review text to clipboard
-     3. Toast "Review copied! Redirecting…"
-     4. Submit review in background + 1 s delay (parallel)
-     5. window.open(validatedUrl, '_blank') — real URL, never blank
-     6. If popup blocked → keep user on page, show manual button
-
-     KEY: Never call window.open('', '_blank') then set location.href.
-          That pattern leaves blank tabs when location redirect fails.
-          Always open with the final URL directly.
-  ─────────────────────────────────────────────────────────── */
+  /* ── Copy & Redirect ──────────────────────────────────────────
+     1. Validate Google URL
+     2. Copy review text
+     3. Toast
+     4. Submit in background + 1s delay
+     5. Open Google Reviews
+     6. Mark done (localStorage) + show Thank You page
+  ─────────────────────────────────────────────────────────────── */
   async function handleCopy(text, idx) {
-    if (copyingIdx !== null) return;   // prevent double-tap
+    if (copyingIdx !== null) return;
 
-    // ① Validate URL — synchronous, zero side-effects, no tab opened yet
     const rawUrl = client.googleReviewLink?.trim() || '';
     const { valid, reason } = validateGoogleUrl(rawUrl);
 
-    console.debug('[ReviewPage] Redirect check', {
-      businessId:   client._id,
-      businessName: client.businessName,
-      googleUrl:    rawUrl || '(empty)',
-      valid,
-      reason: valid ? 'ok' : reason,
-    });
-
     if (!valid) {
-      const msg = reason === 'missing'
+      toast.error(reason === 'missing'
         ? 'Google Review URL is not configured for this business.'
-        : 'Invalid Google Review URL. Please contact the business owner.';
-      console.warn('[ReviewPage] Redirect aborted —', msg);
-      toast.error(msg);
-      return;   // ← stops here, zero tabs opened
+        : 'Invalid Google Review URL. Please contact the business owner.');
+      return;
     }
 
     setCopyingIdx(idx);
 
-    // ② Copy to clipboard
-    const copied = await copyToClipboard(text);
-    if (!copied) {
-      console.warn('[ReviewPage] Clipboard write failed — continuing anyway');
-    }
+    await copyToClipboard(text);
 
-    // ③ Toast
-    toast.success('✅ Review copied successfully. Redirecting to Google Review…', { duration: 4000 });
+    toast.success('Review copied successfully. Redirecting to Google Review...', { duration: 4000 });
 
-    // ④ Submit review + 1 s delay in parallel (non-blocking)
     await Promise.all([
       (async () => {
         try {
@@ -222,7 +199,7 @@ export default function ReviewPage() {
             qrToken,
           });
         } catch (err) {
-          console.warn('[ReviewPage] Review submit failed (non-fatal):', err?.message);
+          console.warn('[ReviewPage] submit failed (non-fatal):', err?.message);
         }
       })(),
       new Promise((r) => setTimeout(r, 1000)),
@@ -230,32 +207,21 @@ export default function ReviewPage() {
 
     setCopyingIdx(null);
     setCopiedIdx(idx);
-    setGoogleLink(rawUrl);    // always use the validated URL, not server response
+    setGoogleLink(rawUrl);
 
-    // Track google_submitted — fire and forget
-    if (customerId) {
-      publicAPI.trackCustomer(customerId, 'google_submitted').catch(() => {});
-    }
+    if (customerId) publicAPI.trackCustomer(customerId, 'google_submitted').catch(() => {});
 
-    // ⑤ Open the real URL directly — NEVER pre-open blank tabs
     let opened = false;
     try {
       const tab = window.open(rawUrl, '_blank', 'noopener,noreferrer');
-      // window.open returns null when blocked; some browsers return a closed window
       opened = !!(tab && !tab.closed);
-      console.debug('[ReviewPage] window.open result:', opened ? 'opened' : 'blocked', rawUrl);
-    } catch (err) {
-      console.error('[ReviewPage] window.open threw:', err);
-      opened = false;
-    }
+    } catch { opened = false; }
 
     setPopupBlocked(!opened);
 
-    if (!opened) {
-      console.warn('[ReviewPage] Popup blocked — showing manual fallback button');
-    }
-
-    setStep('done');
+    // Mark done — prevent resubmission
+    markDone(slug);
+    setStep('thankyou');
   }
 
   async function handleNegativeSubmit(e) {
@@ -267,13 +233,12 @@ export default function ReviewPage() {
         customerName: name, customerPhone: contact,
         customerEmail: email, message, qrToken,
       });
-      // Track feedback_submitted — fire and forget
-      if (customerId) {
-        publicAPI.trackCustomer(customerId, 'feedback_submitted').catch(() => {});
-      }
-      setStep('thanks');
+      if (customerId) publicAPI.trackCustomer(customerId, 'feedback_submitted').catch(() => {});
+      // Mark done — prevent resubmission
+      markDone(slug);
+      setStep('thankyou');
     } catch {
-      toast.error('Could not submit feedback');
+      toast.error('Could not submit feedback. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -281,9 +246,11 @@ export default function ReviewPage() {
 
   const STAR_LABELS = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'];
 
+  /* ── Render ── */
   return (
     <div className="min-h-screen bg-gradient-to-b from-yellow-50 via-background to-background">
       <div className="container mx-auto max-w-xl px-4 py-10">
+
         {/* Header */}
         <header className="text-center mb-8">
           {client.businessLogo ? (
@@ -298,7 +265,7 @@ export default function ReviewPage() {
           {client.address && <p className="text-sm text-muted-foreground mt-1">{client.address}</p>}
         </header>
 
-        {/* ── Step: Rate ──────────────────────────────────── */}
+        {/* ── Rate ── */}
         {step === 'rate' && (
           <Card>
             <CardContent className="p-8 text-center">
@@ -330,7 +297,7 @@ export default function ReviewPage() {
           </Card>
         )}
 
-        {/* ── Step: Service selection ──────────────────────── */}
+        {/* ── Service selection (REQUIRED — no skip) ── */}
         {step === 'service' && (
           <Card>
             <CardContent className="p-6">
@@ -341,7 +308,9 @@ export default function ReviewPage() {
                 <Wrench className="h-5 w-5 text-primary" />
                 <h2 className="font-semibold text-lg">Which service did you use?</h2>
               </div>
-              <p className="text-sm text-muted-foreground mb-5">This helps us personalise your review.</p>
+              <p className="text-sm text-muted-foreground mb-5">
+                Select a service to continue — this helps generate a relevant review.
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 {activeServices.map((svc) => (
                   <button
@@ -357,29 +326,26 @@ export default function ReviewPage() {
                   </button>
                 ))}
               </div>
-              <button
-                onClick={skipService}
-                className="mt-4 w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
-              >
-                Skip — I'd rather not say
-              </button>
+              {/* No skip button — service selection is mandatory */}
             </CardContent>
           </Card>
         )}
 
-        {/* ── Step: Category ──────────────────────────────── */}
+        {/* ── Category (REQUIRED) ── */}
         {step === 'category' && (
           <Card>
             <CardContent className="p-6">
-              <button onClick={() => setStep(activeServices.length > 0 ? 'service' : 'rate')}
-                className="flex items-center gap-1 text-sm text-muted-foreground mb-4 hover:text-foreground transition-colors">
+              <button
+                onClick={() => setStep(activeServices.length > 0 ? 'service' : 'rate')}
+                className="flex items-center gap-1 text-sm text-muted-foreground mb-4 hover:text-foreground transition-colors"
+              >
                 <ArrowLeft className="h-4 w-4" /> Back
               </button>
               <h2 className="font-semibold text-lg">What did you love most?</h2>
               <p className="text-sm text-muted-foreground mb-5">
                 {selectedService
                   ? `About your ${selectedService.name} — what stood out?`
-                  : "Pick one — we'll craft your Google review."}
+                  : 'Pick a category to continue.'}
               </p>
               <div className="flex flex-wrap gap-2">
                 {(categories ?? []).map((c) => (
@@ -404,12 +370,11 @@ export default function ReviewPage() {
           </Card>
         )}
 
-        {/* ── Step: Suggestions ───────────────────────────── */}
+        {/* ── Suggestions ── */}
         {step === 'suggestions' && (
           <Card>
             <CardContent className="p-6">
-              <button onClick={() => setStep('category')}
-                className="flex items-center gap-1 text-sm text-muted-foreground mb-4 hover:text-foreground transition-colors">
+              <button onClick={() => setStep('category')} className="flex items-center gap-1 text-sm text-muted-foreground mb-4 hover:text-foreground transition-colors">
                 <ArrowLeft className="h-4 w-4" /> Back
               </button>
               <h2 className="font-semibold text-lg">Pick your review</h2>
@@ -417,7 +382,7 @@ export default function ReviewPage() {
                 Tap <strong>Copy</strong> — your review is copied and Google Reviews opens automatically.
               </p>
 
-              {/* URL warning banner — shown if Google URL is missing/invalid */}
+              {/* Google URL warning */}
               {(() => {
                 const { valid, reason } = validateGoogleUrl(client.googleReviewLink);
                 if (valid) return null;
@@ -487,85 +452,16 @@ export default function ReviewPage() {
           </Card>
         )}
 
-        {/* ── Step: Done ──────────────────────────────────── */}
-        {step === 'done' && (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <div className="mx-auto w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
-                <CheckCircle2 className="h-9 w-9 text-green-500" />
-              </div>
-              <h2 className="font-bold text-xl text-gray-900">
-                {popupBlocked ? 'Review Copied!' : 'All done — thank you! 🎉'}
-              </h2>
-              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                {popupBlocked
-                  ? 'Your review was copied to the clipboard. Tap the button below to open Google Reviews and paste it.'
-                  : 'Your review was copied and Google Reviews opened in a new tab. Just paste and hit Submit!'}
-              </p>
-
-              {/* Step progress */}
-              <div className="mt-5 mb-6 flex items-center justify-center gap-2 text-xs text-gray-500 flex-wrap">
-                <span className="flex items-center gap-1">
-                  <span className="h-5 w-5 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
-                  Review copied
-                </span>
-                <span className="text-gray-300 shrink-0">──</span>
-                <span className="flex items-center gap-1">
-                  <span className={cn(
-                    'h-5 w-5 rounded-full text-white flex items-center justify-center text-[10px] font-bold shrink-0',
-                    popupBlocked ? 'bg-gray-300 text-gray-600' : 'bg-green-500',
-                  )}>
-                    {popupBlocked ? '2' : '✓'}
-                  </span>
-                  Google Reviews {popupBlocked ? '(tap below)' : 'opened'}
-                </span>
-                <span className="text-gray-300 shrink-0">──</span>
-                <span className="flex items-center gap-1 text-gray-400">
-                  <span className={cn(
-                    'h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0',
-                    popupBlocked ? 'bg-gray-200 text-gray-500' : 'bg-primary text-primary-foreground',
-                  )}>
-                    {popupBlocked ? '3' : '2'}
-                  </span>
-                  Paste &amp; Submit
-                </span>
-              </div>
-
-              {/* Fallback button — only when popup was blocked */}
-              {popupBlocked && googleLink && (
-                <a
-                  href={googleLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block"
-                >
-                  <Button size="lg" className="w-full text-base font-semibold gap-2 py-6">
-                    <ExternalLink className="h-5 w-5" />
-                    Open Google Reviews
-                  </Button>
-                </a>
-              )}
-
-              {!popupBlocked && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Just paste and tap Submit on Google Reviews.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ── Step: Negative ──────────────────────────────── */}
+        {/* ── Negative feedback form ── */}
         {step === 'negative' && (
           <Card>
             <CardContent className="p-6">
-              <button onClick={() => setStep('rate')}
-                className="flex items-center gap-1 text-sm text-muted-foreground mb-4 hover:text-foreground transition-colors">
+              <button onClick={() => setStep('rate')} className="flex items-center gap-1 text-sm text-muted-foreground mb-4 hover:text-foreground transition-colors">
                 <ArrowLeft className="h-4 w-4" /> Back
               </button>
-              <h2 className="font-semibold text-lg">We'd love to make it right</h2>
+              <h2 className="font-semibold text-lg">We would love to make it right</h2>
               <p className="text-sm text-muted-foreground mb-5">
-                You rated us {rating} star{rating === 1 ? '' : 's'}. Share your feedback privately — we'll follow up.
+                You rated us {rating} star{rating === 1 ? '' : 's'}. Share your feedback privately — we will follow up.
               </p>
               <form onSubmit={handleNegativeSubmit} className="space-y-3">
                 <div><Label>Name</Label><Input required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} /></div>
@@ -580,18 +476,47 @@ export default function ReviewPage() {
           </Card>
         )}
 
-        {/* ── Step: Thanks ────────────────────────────────── */}
-        {step === 'thanks' && (
+        {/* ── Thank You page — positive AND negative both land here ── */}
+        {step === 'thankyou' && (
           <Card>
-            <CardContent className="p-8 text-center">
-              <div className="mx-auto w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
+            <CardContent className="p-10 text-center">
+              <div className="mx-auto w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-5">
                 <CheckCircle2 className="h-9 w-9 text-green-500" />
               </div>
-              <h2 className="font-semibold text-xl mt-1">Feedback received</h2>
-              <p className="text-sm text-muted-foreground mt-2">Thank you for letting us know. We'll be in touch shortly.</p>
+              <h2 className="font-bold text-2xl text-gray-900 mb-3">Thank You</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
+                Thank you for taking the time to share your feedback.
+              </p>
+
+              {/* If popup was blocked — show manual fallback button */}
+              {popupBlocked && googleLink && (
+                <a
+                  href={googleLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block mt-6"
+                >
+                  <Button size="lg" className="w-full text-base font-semibold gap-2 py-5">
+                    <ExternalLink className="h-5 w-5" />
+                    Open Google Reviews
+                  </Button>
+                </a>
+              )}
+
+              <Button
+                variant="outline"
+                className="mt-4 w-full"
+                onClick={() => window.close()}
+              >
+                Close
+              </Button>
             </CardContent>
           </Card>
         )}
+
+        {/* ── Already submitted (shown if page is reopened after completion) ── */}
+        {/* Handled by useEffect on mount that redirects to 'thankyou' step */}
+
       </div>
     </div>
   );

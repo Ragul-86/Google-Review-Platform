@@ -74,23 +74,65 @@ const EMPTY = {
   ownerName: '', ownerEmail: '', subscriptionPlan: 'free',
 };
 
-/* ── WhatsApp message templates ─────────────────────────────── */
-function buildWAMessage(template, client) {
-  const loginUrl    = `${window.location.origin}/login`;
-  const reviewUrl   = `${window.location.origin}/review/${client?.slug || ''}`;
-  const ownerEmail  = client?.ownerId?.email || client?.email || '';
-  const bizName     = client?.businessName || '';
-  const googleUrl   = client?.googleReviewLink || 'Not configured';
+/* ── WhatsApp message builder (NO emojis — professional business tone) ── */
+function buildWAMessage(template, client, setPasswordUrl = null) {
+  const loginUrl   = `${window.location.origin}/login`;
+  const reviewUrl  = `${window.location.origin}/review/${client?.slug || ''}`;
+  const ownerEmail = client?.ownerId?.email || client?.email || '';
+  const bizName    = client?.businessName || '';
+  const googleUrl  = client?.googleReviewLink || 'Not configured';
 
   switch (template) {
     case 'onboarding':
-      return `Hi! Welcome to Get Five Star 🌟\n\nYour business account has been set up:\n\n*Business:* ${bizName}\n*Login URL:* ${loginUrl}\n*Username:* ${ownerEmail}\n\nPlease set your password using the link sent separately.\n\n*Your Review Page:* ${reviewUrl}\n*Google Reviews:* ${googleUrl}\n\nNeed help? Reply to this message.`;
+      return [
+        `Hi ${bizName},`,
+        ``,
+        `Your Get Five Star account has been set up. Please find your login details below.`,
+        ``,
+        `Business Name: ${bizName}`,
+        `Login URL: ${loginUrl}`,
+        `Username: ${ownerEmail}`,
+        setPasswordUrl ? `Set Password Link: ${setPasswordUrl}` : `Set Password: Use the link provided separately`,
+        ``,
+        `Review Page: ${reviewUrl}`,
+        `Google Reviews: ${googleUrl}`,
+        ``,
+        `Please click the Set Password link to create your password and access your dashboard.`,
+        ``,
+        `Reply to this message if you need any assistance.`,
+      ].join('\n');
 
     case 'setup_reminder':
-      return `Hi ${bizName} team 👋\n\nThis is a reminder that your Get Five Star account setup is pending.\n\n*Login URL:* ${loginUrl}\n*Username:* ${ownerEmail}\n\nPlease complete your profile setup including:\n✅ Business details\n✅ Services & Categories\n✅ Google Review URL\n\nReach out if you need assistance!`;
+      return [
+        `Hi ${bizName},`,
+        ``,
+        `This is a reminder that your Get Five Star account setup is pending.`,
+        ``,
+        `Login URL: ${loginUrl}`,
+        `Username: ${ownerEmail}`,
+        ``,
+        `Please complete your profile setup:`,
+        `- Business details`,
+        `- Services and Categories`,
+        `- Google Review URL`,
+        ``,
+        `Contact us if you need assistance.`,
+      ].join('\n');
 
-    case 'approval_reminder':
-      return `Hi ${bizName} 🔔\n\nYour account setup is under review. Please ensure:\n\n✅ Google Review URL is configured\n✅ Services are added\n✅ Categories are set\n\nOnce approved, your Review Page will go live:\n${reviewUrl}\n\nContact us if you have questions!`;
+    case 'reset_password':
+      return [
+        `Hi ${bizName},`,
+        ``,
+        `Your Get Five Star password has been reset.`,
+        ``,
+        `Login URL: ${loginUrl}`,
+        `Username: ${ownerEmail}`,
+        setPasswordUrl ? `Set New Password: ${setPasswordUrl}` : '',
+        ``,
+        `This link is valid for 48 hours.`,
+        ``,
+        `Contact us if you did not request this reset.`,
+      ].filter(Boolean).join('\n');
 
     case 'custom':
     default:
@@ -98,11 +140,32 @@ function buildWAMessage(template, client) {
   }
 }
 
+/* ── Full setup WhatsApp message (used in credentials modal) ── */
+function buildSetupMessage({ businessName, loginUrl, email, setPasswordUrl, reviewUrl, googleUrl }) {
+  return [
+    `Hi ${businessName},`,
+    ``,
+    `Your Get Five Star account has been set up. Please find your login details below.`,
+    ``,
+    `Business Name: ${businessName}`,
+    `Login URL: ${loginUrl}`,
+    `Username: ${email}`,
+    setPasswordUrl ? `Set Password Link: ${setPasswordUrl}` : '',
+    ``,
+    reviewUrl   ? `Review Page: ${reviewUrl}` : '',
+    googleUrl   ? `Google Reviews: ${googleUrl}` : '',
+    ``,
+    `Please click the Set Password link to create your password and access your dashboard.`,
+    ``,
+    `Reply to this message if you need any assistance.`,
+  ].filter((l) => l !== undefined && l !== null && !(l === '' && false)).join('\n')
+   .replace(/\n{3,}/g, '\n\n');  // collapse excessive blank lines
+}
+
 const WA_TEMPLATES = [
-  { id: 'onboarding',        label: '📋 Client Onboarding' },
-  { id: 'setup_reminder',    label: '🔔 Setup Reminder' },
-  { id: 'approval_reminder', label: '✅ Approval Reminder' },
-  { id: 'custom',            label: '✏️ Custom Message' },
+  { id: 'onboarding',        label: 'Client Onboarding' },
+  { id: 'setup_reminder',    label: 'Setup Reminder' },
+  { id: 'custom',            label: 'Custom Message' },
 ];
 
 /* ════════════════════════════════════════════════════════════════
@@ -111,7 +174,7 @@ const WA_TEMPLATES = [
    outside-click check → menu stays open until you actually
    click a menu item (not just mousedown anywhere in DOM).
    ════════════════════════════════════════════════════════════════ */
-function ActionMenu({ client, onEdit, onResetPassword, onResetLogin, onToggle, onDelete, onMessage }) {
+function ActionMenu({ client, onEdit, onResetPassword, onResetLogin, onToggle, onDelete, onMessage, onSendSetupDetails }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos]   = useState({ top: 0, left: 0 });
   const btnRef          = useRef(null);
@@ -202,8 +265,9 @@ function ActionMenu({ client, onEdit, onResetPassword, onResetLogin, onToggle, o
         <div className="border-t border-gray-100 my-1" />
 
         {/* ── Management actions ── */}
-        <MenuRow icon={Pencil}        label="Edit Client"   onClick={() => action(onEdit)} />
-        <MenuRow icon={MessageCircle} label="Send Message"  onClick={() => action(onMessage)} />
+        <MenuRow icon={Send}          label="Send Setup Details" onClick={() => action(onSendSetupDetails)} color="green" />
+        <MenuRow icon={Pencil}        label="Edit Client"        onClick={() => action(onEdit)} />
+        <MenuRow icon={MessageCircle} label="Send Message"       onClick={() => action(onMessage)} />
 
         <div className="border-t border-gray-100 my-1" />
 
@@ -337,10 +401,15 @@ export default function AdminClients() {
       const savedEmail = form.ownerEmail;
       setForm(EMPTY);
       if (res.data.setPasswordUrl || res.data.tempPassword) {
+        const clientData = res.data.data;
         setCreds({
-          email:          savedEmail,
-          setPasswordUrl: res.data.setPasswordUrl || null,
-          loginUrl:       `${window.location.origin}/login`,
+          email:           savedEmail,
+          setPasswordUrl:  res.data.setPasswordUrl || null,
+          loginUrl:        `${window.location.origin}/login`,
+          phone:           form.phone?.replace(/\D/g, '') || '',
+          businessName:    form.businessName,
+          googleReviewLink: form.googleReviewLink || '',
+          reviewUrl:       `${window.location.origin}/review/${clientData?.slug || ''}`,
         });
         setCredsOpen(true);
       }
@@ -394,19 +463,12 @@ export default function AdminClients() {
       const bizName        = pwdResetClient?.businessName || '';
       const phone          = pwdResetClient?.phone?.replace(/\D/g, '') || '';
 
-      // Build WhatsApp reset message
-      const waMsg = [
-        `Hi ${bizName} 👋`,
-        ``,
-        `Your Get Five Star password has been reset.`,
-        ``,
-        `*Login URL:* ${loginUrl}`,
-        `*Username:* ${email}`,
-        `*Set New Password:* ${setPasswordUrl}`,
-        ``,
-        `This link is valid for 48 hours.`,
-        `Reply if you need help!`,
-      ].join('\n');
+      // Build WhatsApp reset message (no emojis — professional tone)
+      const waMsg = buildWAMessage('reset_password', {
+        businessName: bizName,
+        ownerId: { email },
+        googleReviewLink: pwdResetClient?.googleReviewLink || '',
+      }, setPasswordUrl);
 
       toast.success('Password Reset Link Generated');
 
@@ -445,6 +507,34 @@ export default function AdminClients() {
       setMsgBody('');
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'Failed to send message'),
+  });
+
+  /* Send Setup Details — generates fresh set-password token, opens WhatsApp */
+  const [setupDetailsClient, setSetupDetailsClient] = useState(null);
+  const sendSetupDetailsMut = useMutation({
+    mutationFn: (id) => clientsAPI.resetPassword(id),
+    onSuccess: (res) => {
+      const client        = setupDetailsClient;
+      const setPasswordUrl = res.data.setPasswordUrl || '';
+      const phone         = client?.phone?.replace(/\D/g, '') || '';
+      const msg = buildSetupMessage({
+        businessName: client?.businessName || '',
+        loginUrl:     `${window.location.origin}/login`,
+        email:        client?.ownerId?.email || '',
+        setPasswordUrl,
+        reviewUrl:    `${window.location.origin}/review/${client?.slug || ''}`,
+        googleUrl:    client?.googleReviewLink || '',
+      });
+
+      if (phone) {
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+        toast.success('WhatsApp Opened with Setup Details');
+      } else {
+        navigator.clipboard.writeText(msg);
+        toast.info('No phone on file — setup message copied to clipboard');
+      }
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to generate setup link'),
   });
 
   /* ── Handlers ── */
@@ -514,6 +604,11 @@ export default function AdminClients() {
   function openPwdReset(client) {
     setPwdResetClient(client);
     setPwdResetOpen(true);
+  }
+
+  function openSendSetupDetails(client) {
+    setSetupDetailsClient(client);
+    sendSetupDetailsMut.mutate(client._id);
   }
 
   function sendViaWhatsApp() {
@@ -664,20 +759,44 @@ export default function AdminClients() {
               <CredRow label="Set Password Link (48h)" value={creds.setPasswordUrl} mono blue />
             )}
           </div>
-          <Button
-            className="w-full mt-2 gap-2"
-            onClick={() => {
-              const msg = [
-                `Login URL: ${creds?.loginUrl}`,
-                `Username: ${creds?.email}`,
-                creds?.setPasswordUrl ? `Set Password: ${creds.setPasswordUrl}` : '',
-              ].filter(Boolean).join('\n');
-              navigator.clipboard.writeText(msg);
-              toast.success('All credentials copied');
-            }}
-          >
-            <Copy className="h-4 w-4" /> Copy All for WhatsApp
-          </Button>
+          {/* Send Setup Details via WhatsApp — opens wa.me if phone on file */}
+          {creds?.phone ? (
+            <Button
+              className="w-full mt-2 gap-2 bg-green-600 hover:bg-green-700"
+              onClick={() => {
+                const msg = buildSetupMessage({
+                  businessName: creds.businessName || '',
+                  loginUrl:     creds.loginUrl,
+                  email:        creds.email,
+                  setPasswordUrl: creds.setPasswordUrl,
+                  reviewUrl:    creds.reviewUrl || '',
+                  googleUrl:    creds.googleReviewLink || '',
+                });
+                window.open(`https://wa.me/${creds.phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                toast.success('WhatsApp Opened with Setup Details');
+              }}
+            >
+              <MessageCircle className="h-4 w-4" /> Send Setup Details via WhatsApp
+            </Button>
+          ) : (
+            <Button
+              className="w-full mt-2 gap-2"
+              onClick={() => {
+                const msg = buildSetupMessage({
+                  businessName: creds?.businessName || '',
+                  loginUrl:     creds?.loginUrl,
+                  email:        creds?.email,
+                  setPasswordUrl: creds?.setPasswordUrl,
+                  reviewUrl:    creds?.reviewUrl || '',
+                  googleUrl:    creds?.googleReviewLink || '',
+                });
+                navigator.clipboard.writeText(msg);
+                toast.success('Setup message copied — paste into WhatsApp');
+              }}
+            >
+              <Copy className="h-4 w-4" /> Copy Setup Message for WhatsApp
+            </Button>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -972,6 +1091,7 @@ export default function AdminClients() {
                   onResetPassword={() => openPwdReset(b)}
                   onResetLogin={() => openResetLogin(b)}
                   onDelete={() => openDelete(b)}
+                  onSendSetupDetails={() => openSendSetupDetails(b)}
                 />
               </div>
             ))}
