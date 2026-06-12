@@ -386,15 +386,40 @@ export default function AdminClients() {
 
   const resetPwdMut = useMutation({
     mutationFn: (id) => clientsAPI.resetPassword(id),
-    onSuccess: (res) => {
+    onSuccess: (res, id) => {
       setPwdResetOpen(false);
-      setCreds({
-        email:          res.data.email,
-        setPasswordUrl: res.data.setPasswordUrl || null,
-        loginUrl:       `${window.location.origin}/login`,
-      });
-      setCredsOpen(true);
+      const email          = res.data.email;
+      const setPasswordUrl = res.data.setPasswordUrl || '';
+      const loginUrl       = `${window.location.origin}/login`;
+      const bizName        = pwdResetClient?.businessName || '';
+      const phone          = pwdResetClient?.phone?.replace(/\D/g, '') || '';
+
+      // Build WhatsApp reset message
+      const waMsg = [
+        `Hi ${bizName} 👋`,
+        ``,
+        `Your Get Five Star password has been reset.`,
+        ``,
+        `*Login URL:* ${loginUrl}`,
+        `*Username:* ${email}`,
+        `*Set New Password:* ${setPasswordUrl}`,
+        ``,
+        `This link is valid for 48 hours.`,
+        `Reply if you need help!`,
+      ].join('\n');
+
       toast.success('Password Reset Link Generated');
+
+      if (phone) {
+        // Open WhatsApp with phone number + pre-filled message
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(waMsg)}`, '_blank');
+      } else {
+        // No phone on file — copy to clipboard + show credentials modal
+        navigator.clipboard.writeText(waMsg);
+        toast.info('No phone on file — reset message copied to clipboard');
+        setCreds({ email, setPasswordUrl, loginUrl });
+        setCredsOpen(true);
+      }
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'Failed to reset password'),
   });
@@ -660,24 +685,43 @@ export default function AdminClients() {
       <Dialog open={pwdResetOpen} onOpenChange={setPwdResetOpen}>
         <DialogContent className="z-[9999] max-w-sm">
           <DialogHeader><DialogTitle>Reset Password</DialogTitle></DialogHeader>
-          <div className="py-2">
-            <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl mb-4">
+          <div className="py-2 space-y-3">
+            <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
               <RefreshCw className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
               <p className="text-sm text-amber-800">
-                This generates a new <strong>Set Password link</strong> (valid 48h) for{' '}
-                <strong>{pwdResetClient?.businessName}</strong>. Share it with the client via WhatsApp.
+                Generates a new <strong>Set Password link</strong> (valid 48 hours) for{' '}
+                <strong>{pwdResetClient?.businessName}</strong>.
               </p>
             </div>
-            <p className="text-sm text-gray-500">Owner: <strong>{pwdResetClient?.ownerId?.email}</strong></p>
+            <div className="text-sm text-gray-500 space-y-1 px-1">
+              <p>Owner: <strong className="text-gray-800">{pwdResetClient?.ownerId?.email}</strong></p>
+              {pwdResetClient?.phone ? (
+                <p className="flex items-center gap-1.5 text-green-700">
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  <strong>Will open WhatsApp</strong> with pre-filled reset message
+                </p>
+              ) : (
+                <p className="flex items-center gap-1.5 text-amber-600">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  No phone on file — message will be copied to clipboard
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={() => setPwdResetOpen(false)}>Cancel</Button>
             <Button
-              className="flex-1"
+              className={cn('flex-1 gap-2', pwdResetClient?.phone ? 'bg-green-600 hover:bg-green-700' : '')}
               onClick={() => resetPwdMut.mutate(pwdResetClient._id)}
               disabled={resetPwdMut.isPending}
             >
-              {resetPwdMut.isPending ? 'Generating…' : 'Generate Reset Link'}
+              {resetPwdMut.isPending ? (
+                'Generating…'
+              ) : pwdResetClient?.phone ? (
+                <><MessageCircle className="h-4 w-4" /> Send via WhatsApp</>
+              ) : (
+                'Generate & Copy Link'
+              )}
             </Button>
           </div>
         </DialogContent>
