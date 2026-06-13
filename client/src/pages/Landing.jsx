@@ -49,17 +49,17 @@ function AnimatedHeadline() {
     return () => clearInterval(t);
   }, []);
   return (
-    <div style={{ fontWeight: 900, lineHeight: 1.05, letterSpacing: '-0.03em', fontSize: 'clamp(38px,5.2vw,78px)' }}>
-      {/* Line 1 — always white, never cycles */}
-      <div style={{ color: '#fff' }}>GetMore Reviews.</div>
-      {/* Line 2 — "GetMore" is static gold, only the word after it cycles */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', flexWrap: 'nowrap' }}>
+    <div style={{ fontWeight: 900, lineHeight: 1.1, letterSpacing: '-0.03em', fontSize: 'clamp(32px,4vw,64px)' }}>
+      {/* Line 1 — always white, never cycles, never wraps */}
+      <div style={{ color: '#fff', whiteSpace: 'nowrap' }}>GetMore Reviews.</div>
+      {/* Line 2 — "GetMore" static gold + cycling word, never wraps */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
         <span style={{ color: GOLD }}>GetMore&nbsp;</span>
-        {/* Clip container: explicit height = lineHeight (1.05em) so overflow:hidden cuts off entering/exiting words */}
+        {/* Clip container: explicit height = lineHeight so overflow:hidden cuts entering/exiting words */}
         <span style={{
           display: 'inline-block',
           overflow: 'hidden',
-          height: '1.05em',
+          height: '1.1em',
           verticalAlign: 'bottom',
         }}>
           <AnimatePresence mode="wait" initial={false}>
