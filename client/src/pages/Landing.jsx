@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { Sparkles, ShieldCheck, BarChart3, Star, Zap, MapPin, Bell, ArrowRight, Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-// ─── Brand constants ───────────────────────────────────────────────────────────
+// ─── Brand ────────────────────────────────────────────────────────────────────
 const CYCLE_WORDS = ['Customers.', 'Trust.', 'Growth.'];
 
-// ─── Scroll-reveal hook ────────────────────────────────────────────────────────
+// ─── Scroll-reveal ────────────────────────────────────────────────────────────
 function useInView(threshold = 0.15) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
@@ -13,7 +15,7 @@ function useInView(threshold = 0.15) {
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      ([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } },
       { threshold }
     );
     obs.observe(el);
@@ -30,8 +32,8 @@ function Reveal({ children, delay = 0, className = '' }) {
       className={className}
       style={{
         opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0)' : 'translateY(32px)',
-        transition: `opacity 0.7s ease ${delay}s, transform 0.7s ease ${delay}s`,
+        transform: visible ? 'translateY(0)' : 'translateY(24px)',
+        transition: `opacity 0.6s ease ${delay}s, transform 0.6s ease ${delay}s`,
       }}
     >
       {children}
@@ -39,7 +41,7 @@ function Reveal({ children, delay = 0, className = '' }) {
   );
 }
 
-// ─── Animated Headline ─────────────────────────────────────────────────────────
+// ─── Animated Headline ────────────────────────────────────────────────────────
 function AnimatedHeadline() {
   const [idx, setIdx] = useState(0);
   useEffect(() => {
@@ -47,15 +49,15 @@ function AnimatedHeadline() {
     return () => clearInterval(t);
   }, []);
   return (
-    <div
-      className="font-sora font-black tracking-tight select-none"
-      style={{ fontWeight: 900, lineHeight: 1.06, fontSize: 'clamp(44px,6vw,88px)' }}
+    <h1
+      className="font-bold tracking-tight"
+      style={{ fontSize: 'clamp(36px,5vw,72px)', lineHeight: 1.08, fontWeight: 800 }}
     >
-      {/* Line 1 — fully white */}
-      <div style={{ color: '#fff' }}>GetMore Reviews.</div>
-      {/* Line 2 — full gold */}
-      <div>
-        <span style={{ color: '#FBBF24' }}>GetMore </span>
+      {/* Line 1 — foreground */}
+      <span className="block text-foreground">GetMore Reviews.</span>
+      {/* Line 2 — gold */}
+      <span className="block" style={{ color: '#D97706' }}>
+        GetMore{' '}
         <span
           style={{
             display: 'inline-block',
@@ -71,663 +73,465 @@ function AnimatedHeadline() {
               animate={{ y: '0%', opacity: 1 }}
               exit={{ y: '-110%', opacity: 0 }}
               transition={{ duration: 0.48, ease: [0.42, 0, 0.58, 1] }}
-              style={{ display: 'block', whiteSpace: 'nowrap', color: '#FBBF24' }}
+              style={{ display: 'block', whiteSpace: 'nowrap', color: '#D97706' }}
             >
               {CYCLE_WORDS[idx]}
             </motion.span>
           </AnimatePresence>
         </span>
-      </div>
-    </div>
+      </span>
+    </h1>
   );
 }
 
-// ─── Dashboard Mockup ──────────────────────────────────────────────────────────
-function DashboardMockup() {
-  return (
-    <div
-      className="relative w-full max-w-2xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
-      style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.08)' }}
-    >
-      {/* Window chrome */}
-      <div className="flex items-center gap-2 px-4 py-3" style={{ background: '#111' }}>
-        <span className="w-3 h-3 rounded-full bg-red-500" />
-        <span className="w-3 h-3 rounded-full bg-yellow-400" />
-        <span className="w-3 h-3 rounded-full bg-green-500" />
-        <span className="ml-4 text-xs text-white/40">GETMORE Dashboard</span>
-      </div>
-      {/* KPI Row */}
-      <div className="grid grid-cols-3 gap-3 p-4">
-        {[
-          { label: 'New Reviews', value: '248', delta: '+18%' },
-          { label: 'Avg Rating', value: '4.9★', delta: '+0.3' },
-          { label: 'Conversions', value: '63%', delta: '+11%' },
-        ].map(k => (
-          <div key={k.label} className="rounded-xl p-3" style={{ background: '#27272a' }}>
-            <p className="text-xs text-white/50 mb-1">{k.label}</p>
-            <p className="text-xl font-bold text-white">{k.value}</p>
-            <p className="text-xs font-semibold mt-1" style={{ color: '#FBBF24' }}>{k.delta}</p>
-          </div>
-        ))}
-      </div>
-      {/* Bar chart */}
-      <div className="px-4 pb-4">
-        <div className="rounded-xl p-4" style={{ background: '#27272a' }}>
-          <p className="text-xs text-white/50 mb-3">Reviews This Week</p>
-          <div className="flex items-end gap-2 h-20">
-            {[40, 65, 50, 80, 70, 90, 75].map((h, i) => (
-              <div key={i} className="flex-1 rounded-t" style={{ height: `${h}%`, background: i === 5 ? '#FBBF24' : '#3f3f46' }} />
-            ))}
-          </div>
-          <div className="flex justify-between mt-1">
-            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-              <span key={i} className="flex-1 text-center text-xs text-white/30">{d}</span>
-            ))}
-          </div>
-        </div>
-      </div>
-      {/* Activity Feed */}
-      <div className="px-4 pb-4 space-y-2">
-        {[
-          { name: 'Sarah M.', text: 'Amazing service! 5 stars ⭐', time: '2m ago' },
-          { name: 'James T.', text: 'Very professional team', time: '14m ago' },
-          { name: 'Priya K.', text: 'Would recommend to everyone!', time: '1h ago' },
-        ].map(a => (
-          <div key={a.name} className="flex items-center gap-3 rounded-xl px-3 py-2" style={{ background: '#27272a' }}>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0" style={{ background: '#FBBF24', color: '#111' }}>
-              {a.name[0]}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-white truncate">{a.name}</p>
-              <p className="text-xs text-white/50 truncate">{a.text}</p>
-            </div>
-            <span className="text-xs text-white/30 shrink-0">{a.time}</span>
-          </div>
-        ))}
-      </div>
-      {/* Floating badge */}
-      <motion.div
-        animate={{ y: [0, -8, 0] }}
-        transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-        className="absolute top-16 -right-4 rounded-2xl px-4 py-2 text-sm font-bold shadow-xl"
-        style={{ background: '#FBBF24', color: '#111' }}
-      >
-        +34 Reviews Today 🎉
-      </motion.div>
-    </div>
-  );
-}
-
-// ─── Navbar ────────────────────────────────────────────────────────────────────
-function Navbar() {
+// ─── Main ─────────────────────────────────────────────────────────────────────
+export default function Landing() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => setScrolled(window.scrollY > 16);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-  return (
-    <header
-      className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
-      style={{
-        height: 84,
-        background: scrolled ? 'rgba(17,17,17,0.95)' : 'transparent',
-        backdropFilter: scrolled ? 'blur(12px)' : 'none',
-        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.06)' : 'none',
-      }}
-    >
-      <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
-        <img
-          src="/getmore-logo.png"
-          alt="GETMORE"
-          style={{ width: 200, height: 'auto' }}
-          className="object-contain select-none"
-          draggable="false"
-        />
-        <nav className="hidden md:flex items-center gap-8">
-          {['Features', 'How It Works', 'Pricing', 'About'].map(item => (
-            <a
-              key={item}
-              href={`#${item.toLowerCase().replace(/\s+/g, '-')}`}
-              className="text-sm font-medium transition-colors duration-200"
-              style={{ color: 'rgba(255,255,255,0.7)' }}
-              onMouseEnter={e => (e.target.style.color = '#FBBF24')}
-              onMouseLeave={e => (e.target.style.color = 'rgba(255,255,255,0.7)')}
-            >
-              {item}
-            </a>
-          ))}
-        </nav>
-        <div className="flex items-center gap-3">
-          <Link
-            to="/login"
-            className="text-sm font-semibold px-4 py-2 rounded-lg transition-colors duration-200"
-            style={{ color: '#fff' }}
-          >
-            Log In
-          </Link>
-          <Link
-            to="/register"
-            className="text-sm font-bold px-5 py-2 rounded-xl transition-all duration-200"
-            style={{ background: '#FBBF24', color: '#111' }}
-          >
-            Get Started Free
-          </Link>
-        </div>
-      </div>
-    </header>
-  );
-}
 
-// ─── Main Landing Page ─────────────────────────────────────────────────────────
-export default function Landing() {
   return (
-    <div style={{ background: '#111111', color: '#fff', fontFamily: 'Sora, Inter, sans-serif' }}>
-      <Navbar />
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
+
+      {/* ── HEADER ── */}
+      <header
+        className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
+        style={{
+          height: 64,
+          background: scrolled ? 'hsl(var(--background)/0.95)' : 'hsl(var(--background))',
+          backdropFilter: scrolled ? 'blur(10px)' : 'none',
+          borderBottom: scrolled ? '1px solid hsl(var(--border))' : '1px solid transparent',
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
+          <img
+            src="/getmore-logo.png"
+            alt="GETMORE"
+            style={{ width: 160, height: 'auto' }}
+            className="object-contain select-none"
+            draggable="false"
+          />
+          <nav className="hidden md:flex items-center gap-6">
+            {['Features', 'How It Works', 'Pricing'].map(item => (
+              <a
+                key={item}
+                href={`#${item.toLowerCase().replace(/\s+/g, '-')}`}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {item}
+              </a>
+            ))}
+          </nav>
+          <div className="flex items-center gap-3">
+            <Link to="/login">
+              <Button variant="ghost" size="sm">Sign in</Button>
+            </Link>
+            <Link to="/register">
+              <Button size="sm" style={{ background: '#D97706', color: '#fff', border: 'none' }}>
+                Get Started Free
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </header>
 
       {/* ── HERO ── */}
-      <section
-        className="relative min-h-screen flex items-center overflow-hidden pt-20"
-        style={{ background: 'linear-gradient(135deg, #111111 0%, #1a1a1a 50%, #111111 100%)' }}
-      >
-        {/* Background glow */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(251,191,36,0.12) 0%, transparent 70%)',
-          }}
-        />
-        <div className="max-w-7xl mx-auto px-6 py-20 grid lg:grid-cols-2 gap-16 items-center w-full">
-          <div>
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
-            >
-              <div
-                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold mb-8"
-                style={{ background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.3)', color: '#FBBF24' }}
-              >
-                🚀 The #1 Google Review Platform for Local Businesses
-              </div>
-              <AnimatedHeadline />
-              <p className="mt-6 text-lg leading-relaxed" style={{ color: 'rgba(255,255,255,0.65)', maxWidth: 520 }}>
-                Stop leaving 5-star reviews on the table. GETMORE automates your Google review collection,
-                protects your reputation, and turns happy customers into powerful social proof — on autopilot.
-              </p>
-              <div className="flex flex-wrap gap-4 mt-8">
-                <Link
-                  to="/register"
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-bold transition-all duration-200 hover:scale-105"
-                  style={{ background: '#FBBF24', color: '#111' }}
-                >
-                  Start Free Trial →
-                </Link>
-                <a
-                  href="#how-it-works"
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-semibold transition-all duration-200"
-                  style={{ border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }}
-                >
-                  See How It Works
-                </a>
-              </div>
-              <div className="flex items-center gap-6 mt-8">
-                {['No credit card required', 'Setup in 5 minutes', 'Cancel anytime'].map(t => (
-                  <div key={t} className="flex items-center gap-1.5 text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                    <span style={{ color: '#FBBF24' }}>✓</span> {t}
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
+      <main className="flex-1 pt-16">
+        <section className="flex flex-col items-center justify-center px-4 text-center py-24">
           <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="max-w-3xl"
           >
-            <DashboardMockup />
-          </motion.div>
-        </div>
-      </section>
+            <div
+              className="inline-flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full mb-8 border"
+              style={{
+                background: 'hsl(43 96% 56% / 0.1)',
+                borderColor: 'hsl(43 96% 56% / 0.3)',
+                color: '#D97706',
+              }}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              The #1 Google Review Platform for Local Businesses
+            </div>
 
-      {/* ── SOCIAL PROOF ── */}
-      <section className="py-16" style={{ background: '#0d0d0d', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-        <div className="max-w-7xl mx-auto px-6">
-          <Reveal>
-            <p className="text-center text-sm font-semibold mb-10" style={{ color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em' }}>
-              TRUSTED BY BUSINESSES ACROSS INDUSTRIES
+            <AnimatedHeadline />
+
+            <p className="mt-6 text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
+              Stop leaving 5-star reviews on the table. GETMORE automates your Google review collection,
+              protects your reputation, and turns happy customers into powerful social proof — on autopilot.
             </p>
-          </Reveal>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              <Link to="/register">
+                <Button size="lg" className="px-8 gap-2" style={{ background: '#D97706', color: '#fff', border: 'none' }}>
+                  Start Free Trial <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              <a href="#how-it-works">
+                <Button size="lg" variant="outline" className="px-8">
+                  See How It Works
+                </Button>
+              </a>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-6 mt-6">
+              {['No credit card required', 'Setup in 5 minutes', 'Cancel anytime'].map(t => (
+                <span key={t} className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Check className="h-3.5 w-3.5" style={{ color: '#D97706' }} /> {t}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Stats row */}
+          <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl w-full">
             {[
               { stat: '10,000+', label: 'Businesses Trust GETMORE' },
               { stat: '2.4M+', label: 'Reviews Collected' },
-              { stat: '4.9★', label: 'Average Rating Achieved' },
-              { stat: '340%', label: 'Average Review Increase' },
+              { stat: '4.9★', label: 'Avg Rating Achieved' },
+              { stat: '340%', label: 'Avg Review Increase' },
             ].map((s, i) => (
-              <Reveal key={s.label} delay={i * 0.1}>
-                <div className="text-center">
-                  <p className="text-3xl font-black" style={{ color: '#FBBF24' }}>{s.stat}</p>
-                  <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>{s.label}</p>
-                </div>
-              </Reveal>
+              <motion.div
+                key={s.label}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
+                className="border rounded-xl p-5 bg-card text-center"
+              >
+                <p className="text-2xl font-bold" style={{ color: '#D97706' }}>{s.stat}</p>
+                <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+              </motion.div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── PROBLEM ── */}
-      <section className="py-24" id="about">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <Reveal>
-            <h2 className="text-4xl font-black mb-6" style={{ color: '#fff' }}>
-              Your Competitors Are Winning on Google. <span style={{ color: '#FBBF24' }}>You Don't Have To Watch.</span>
-            </h2>
-            <p className="text-lg leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-              88% of consumers trust online reviews as much as personal recommendations. Yet most businesses collect
-              reviews randomly, respond inconsistently, and lose customers to competitors with better ratings —
-              even when their service is superior. GETMORE changes that equation permanently.
-            </p>
-          </Reveal>
-          <div className="grid md:grid-cols-3 gap-6 mt-16">
-            {[
-              { icon: '😤', problem: 'Customers leave happy but never leave a review', solution: 'Automated smart requests sent at the perfect moment' },
-              { icon: '😰', problem: 'One bad review tanks your entire reputation', solution: 'Private feedback filter catches negatives before they go public' },
-              { icon: '😴', problem: 'Manual follow-ups eat hours every week', solution: 'Set-and-forget automation runs 24/7 without you' },
-            ].map((item, i) => (
-              <Reveal key={i} delay={i * 0.15}>
-                <div className="rounded-2xl p-6 text-left" style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div className="text-3xl mb-4">{item.icon}</div>
-                  <p className="text-sm mb-3 font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>❌ {item.problem}</p>
-                  <p className="text-sm font-semibold" style={{ color: '#FBBF24' }}>✅ {item.solution}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── HOW IT WORKS ── */}
-      <section id="how-it-works" className="py-24" style={{ background: '#0d0d0d' }}>
-        <div className="max-w-6xl mx-auto px-6">
-          <Reveal>
-            <div className="text-center mb-16">
-              <p className="text-sm font-semibold mb-3" style={{ color: '#FBBF24', letterSpacing: '0.1em' }}>HOW IT WORKS</p>
-              <h2 className="text-4xl font-black" style={{ color: '#fff' }}>
-                3 Simple Steps to <span style={{ color: '#FBBF24' }}>Review Domination</span>
-              </h2>
-              <p className="mt-4 text-lg" style={{ color: 'rgba(255,255,255,0.55)', maxWidth: 520, margin: '16px auto 0' }}>
-                No technical skills needed. No complicated setup. Just results.
-              </p>
-            </div>
-          </Reveal>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                step: '01',
-                title: 'Connect Your Business',
-                desc: 'Link your Google Business Profile in under 2 minutes. Add your team, set your brand colours, and customise your review request messages.',
-              },
-              {
-                step: '02',
-                title: 'GETMORE Requests Reviews Automatically',
-                desc: 'After every service or purchase, GETMORE sends perfectly timed review requests via WhatsApp, SMS, or email. Unhappy customers get redirected to private feedback.',
-              },
-              {
-                step: '03',
-                title: 'Watch Your Reputation Soar',
-                desc: 'Track reviews in real-time, respond instantly with AI-suggested replies, and watch your Google ranking climb as your 5-star reviews pile up.',
-              },
-            ].map((s, i) => (
-              <Reveal key={s.step} delay={i * 0.15}>
-                <div className="relative rounded-2xl p-8" style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div className="text-5xl font-black mb-4" style={{ color: 'rgba(251,191,36,0.15)' }}>{s.step}</div>
-                  <h3 className="text-xl font-bold mb-3" style={{ color: '#fff' }}>{s.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>{s.desc}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── FEATURES ── */}
-      <section id="features" className="py-24">
-        <div className="max-w-6xl mx-auto px-6">
-          <Reveal>
-            <div className="text-center mb-16">
-              <p className="text-sm font-semibold mb-3" style={{ color: '#FBBF24', letterSpacing: '0.1em' }}>FEATURES</p>
-              <h2 className="text-4xl font-black" style={{ color: '#fff' }}>
-                Everything You Need to <span style={{ color: '#FBBF24' }}>Win on Google</span>
-              </h2>
-            </div>
-          </Reveal>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { icon: '🤖', title: 'Smart Review Automation', desc: 'Automatically request reviews at the perfect moment — right after a great customer experience — via WhatsApp, SMS, or email.' },
-              { icon: '🛡️', title: 'Reputation Protection', desc: 'Our intelligent feedback filter identifies unhappy customers and redirects them to private resolution before they post publicly.' },
-              { icon: '📊', title: 'Real-Time Analytics', desc: 'Track your review velocity, response rates, sentiment trends, and competitor comparisons from a single powerful dashboard.' },
-              { icon: '⚡', title: 'Instant Alerts & Responses', desc: 'Get notified the moment a new review lands. Respond instantly with AI-crafted replies that sound authentically human.' },
-              { icon: '🎯', title: 'Multi-Location Management', desc: 'Manage reviews across all your locations from one central hub. Perfect for franchises, agencies, and multi-site businesses.' },
-              { icon: '🔗', title: 'Seamless Integrations', desc: 'Connect with your existing tools — POS systems, CRMs, booking platforms, and more. GETMORE fits into your workflow, not the other way around.' },
-            ].map((f, i) => (
-              <Reveal key={f.title} delay={i * 0.1}>
-                <div className="rounded-2xl p-6 h-full" style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div className="text-3xl mb-4">{f.icon}</div>
-                  <h3 className="text-lg font-bold mb-2" style={{ color: '#fff' }}>{f.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>{f.desc}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── TESTIMONIALS ── */}
-      <section className="py-24" style={{ background: '#0d0d0d' }}>
-        <div className="max-w-6xl mx-auto px-6">
-          <Reveal>
-            <div className="text-center mb-16">
-              <p className="text-sm font-semibold mb-3" style={{ color: '#FBBF24', letterSpacing: '0.1em' }}>RESULTS</p>
-              <h2 className="text-4xl font-black" style={{ color: '#fff' }}>
-                Real Businesses. <span style={{ color: '#FBBF24' }}>Real Results.</span>
-              </h2>
-            </div>
-          </Reveal>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                quote: '"We went from 23 Google reviews to 340 in 90 days. Our phone hasn\'t stopped ringing since. GETMORE is the best investment we\'ve made."',
-                name: 'Marcus T.',
-                role: 'Owner, Elite Auto Detailing',
-                stars: 5,
-                result: '+1,378% reviews in 90 days',
-              },
-              {
-                quote: '"I was sceptical at first. Then we went from 3.8 stars to 4.9 stars in 6 weeks. Now we show up first for every search in our area."',
-                name: 'Priya S.',
-                role: 'Director, Serenity Med Spa',
-                stars: 5,
-                result: '3.8★ → 4.9★ in 6 weeks',
-              },
-              {
-                quote: '"Managing reviews for 12 locations used to be a nightmare. GETMORE made it effortless. Our overall rating went from 4.1 to 4.8 across the board."',
-                name: 'James W.',
-                role: 'Franchise Owner, 12 Locations',
-                stars: 5,
-                result: '4.1★ → 4.8★ across 12 locations',
-              },
-            ].map((t, i) => (
-              <Reveal key={t.name} delay={i * 0.15}>
-                <div className="rounded-2xl p-6 flex flex-col h-full" style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div className="flex gap-1 mb-4">
-                    {Array(t.stars).fill(null).map((_, j) => (
-                      <span key={j} style={{ color: '#FBBF24' }}>★</span>
-                    ))}
+        {/* ── HOW IT WORKS ── */}
+        <section id="how-it-works" className="py-20 border-t">
+          <div className="max-w-5xl mx-auto px-6">
+            <Reveal>
+              <div className="text-center mb-14">
+                <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: '#D97706' }}>How It Works</p>
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground">3 Simple Steps to Review Domination</h2>
+                <p className="mt-3 text-muted-foreground max-w-lg mx-auto">No technical skills needed. No complicated setup. Just results.</p>
+              </div>
+            </Reveal>
+            <div className="grid md:grid-cols-3 gap-6">
+              {[
+                {
+                  step: '01',
+                  title: 'Connect Your Business',
+                  desc: 'Link your Google Business Profile in under 2 minutes. Add your team, set your brand colours, and customise your review request messages.',
+                },
+                {
+                  step: '02',
+                  title: 'GETMORE Requests Reviews Automatically',
+                  desc: 'After every service, GETMORE sends perfectly timed review requests via WhatsApp, SMS, or email. Unhappy customers get redirected to private feedback.',
+                },
+                {
+                  step: '03',
+                  title: 'Watch Your Reputation Soar',
+                  desc: 'Track reviews in real-time, respond with AI-suggested replies, and watch your Google ranking climb as 5-star reviews pile up.',
+                },
+              ].map((s, i) => (
+                <Reveal key={s.step} delay={i * 0.12}>
+                  <div className="border rounded-xl p-6 bg-card h-full">
+                    <p className="text-4xl font-black mb-4" style={{ color: 'hsl(43 96% 56% / 0.25)' }}>{s.step}</p>
+                    <h3 className="font-semibold text-foreground mb-2">{s.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
                   </div>
-                  <p className="text-sm leading-relaxed flex-1 mb-6" style={{ color: 'rgba(255,255,255,0.7)' }}>{t.quote}</p>
-                  <div>
-                    <p className="font-bold text-sm" style={{ color: '#fff' }}>{t.name}</p>
-                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>{t.role}</p>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── FEATURES ── */}
+        <section id="features" className="py-20 border-t">
+          <div className="max-w-5xl mx-auto px-6">
+            <Reveal>
+              <div className="text-center mb-14">
+                <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: '#D97706' }}>Features</p>
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground">Everything You Need to Win on Google</h2>
+              </div>
+            </Reveal>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[
+                { icon: <Zap className="h-5 w-5" />, title: 'Smart Review Automation', desc: 'Automatically request reviews at the perfect moment — right after a great customer experience — via WhatsApp, SMS, or email.' },
+                { icon: <ShieldCheck className="h-5 w-5" />, title: 'Reputation Protection', desc: 'Our intelligent feedback filter identifies unhappy customers and redirects them to private resolution before they post publicly.' },
+                { icon: <BarChart3 className="h-5 w-5" />, title: 'Real-Time Analytics', desc: 'Track your review velocity, response rates, sentiment trends, and competitor comparisons from one powerful dashboard.' },
+                { icon: <Bell className="h-5 w-5" />, title: 'Instant Alerts & Responses', desc: 'Get notified the moment a new review lands. Respond instantly with AI-crafted replies that sound authentically human.' },
+                { icon: <MapPin className="h-5 w-5" />, title: 'Multi-Location Management', desc: 'Manage reviews across all your locations from one central hub. Perfect for franchises, agencies, and multi-site businesses.' },
+                { icon: <Sparkles className="h-5 w-5" />, title: 'AI Review Suggestions', desc: '3 fresh, natural review options per category — customers pick one and submit instantly. Less friction, more reviews.' },
+              ].map((f, i) => (
+                <Reveal key={f.title} delay={i * 0.08}>
+                  <div className="border rounded-xl p-6 bg-card h-full">
                     <div
-                      className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold"
-                      style={{ background: 'rgba(251,191,36,0.12)', color: '#FBBF24' }}
+                      className="w-9 h-9 rounded-lg flex items-center justify-center mb-4"
+                      style={{ background: 'hsl(43 96% 56% / 0.12)', color: '#D97706' }}
                     >
-                      {t.result}
+                      {f.icon}
+                    </div>
+                    <p className="font-semibold text-foreground mb-1">{f.title}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── TESTIMONIALS ── */}
+        <section className="py-20 border-t bg-muted/30">
+          <div className="max-w-5xl mx-auto px-6">
+            <Reveal>
+              <div className="text-center mb-14">
+                <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: '#D97706' }}>Results</p>
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground">Real Businesses. Real Results.</h2>
+              </div>
+            </Reveal>
+            <div className="grid md:grid-cols-3 gap-6">
+              {[
+                {
+                  quote: '"We went from 23 Google reviews to 340 in 90 days. Our phone hasn\'t stopped ringing since."',
+                  name: 'Marcus T.',
+                  role: 'Owner, Elite Auto Detailing',
+                  result: '+1,378% reviews in 90 days',
+                },
+                {
+                  quote: '"We went from 3.8 stars to 4.9 stars in 6 weeks. Now we show up first for every search in our area."',
+                  name: 'Priya S.',
+                  role: 'Director, Serenity Med Spa',
+                  result: '3.8★ → 4.9★ in 6 weeks',
+                },
+                {
+                  quote: '"Managing reviews for 12 locations used to be a nightmare. GETMORE made it effortless."',
+                  name: 'James W.',
+                  role: 'Franchise Owner, 12 Locations',
+                  result: '4.1★ → 4.8★ across 12 locations',
+                },
+              ].map((t, i) => (
+                <Reveal key={t.name} delay={i * 0.12}>
+                  <div className="border rounded-xl p-6 bg-card flex flex-col h-full">
+                    <div className="flex gap-0.5 mb-4">
+                      {Array(5).fill(null).map((_, j) => (
+                        <Star key={j} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      ))}
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed flex-1 mb-4">{t.quote}</p>
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">{t.name}</p>
+                      <p className="text-xs text-muted-foreground">{t.role}</p>
+                      <span
+                        className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                        style={{ background: 'hsl(43 96% 56% / 0.12)', color: '#D97706' }}
+                      >
+                        {t.result}
+                      </span>
                     </div>
                   </div>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── PRICING ── */}
-      <section id="pricing" className="py-24">
-        <div className="max-w-5xl mx-auto px-6">
-          <Reveal>
-            <div className="text-center mb-16">
-              <p className="text-sm font-semibold mb-3" style={{ color: '#FBBF24', letterSpacing: '0.1em' }}>PRICING</p>
-              <h2 className="text-4xl font-black" style={{ color: '#fff' }}>
-                Simple, Transparent <span style={{ color: '#FBBF24' }}>Pricing</span>
-              </h2>
-              <p className="mt-4 text-lg" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                Start free. Scale as you grow. No hidden fees, ever.
-              </p>
+                </Reveal>
+              ))}
             </div>
-          </Reveal>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                name: 'Starter',
-                price: 'Free',
-                period: 'forever',
-                desc: 'Perfect for getting started',
-                features: ['1 Business Location', 'Up to 50 review requests/month', 'Basic analytics dashboard', 'Email support'],
-                cta: 'Get Started Free',
-                featured: false,
-              },
-              {
-                name: 'Growth',
-                price: '$49',
-                period: '/month',
-                desc: 'For growing businesses',
-                features: ['3 Business Locations', 'Unlimited review requests', 'Advanced analytics & reporting', 'WhatsApp + SMS + Email', 'AI response suggestions', 'Priority support'],
-                cta: 'Start 14-Day Free Trial',
-                featured: true,
-              },
-              {
-                name: 'Enterprise',
-                price: 'Custom',
-                period: 'pricing',
-                desc: 'For agencies & franchises',
-                features: ['Unlimited Locations', 'White-label solution', 'Custom integrations', 'Dedicated account manager', 'SLA guarantee', '24/7 phone support'],
-                cta: 'Contact Sales',
-                featured: false,
-              },
-            ].map((plan, i) => (
-              <Reveal key={plan.name} delay={i * 0.1}>
-                <div
-                  className="rounded-2xl p-8 flex flex-col h-full"
-                  style={{
-                    background: plan.featured ? 'rgba(251,191,36,0.08)' : '#18181b',
-                    border: plan.featured ? '2px solid #FBBF24' : '1px solid rgba(255,255,255,0.06)',
-                  }}
-                >
-                  {plan.featured && (
-                    <div
-                      className="inline-block px-3 py-1 rounded-full text-xs font-bold mb-4 self-start"
-                      style={{ background: '#FBBF24', color: '#111' }}
-                    >
-                      Most Popular
-                    </div>
-                  )}
-                  <h3 className="text-xl font-bold mb-1" style={{ color: '#fff' }}>{plan.name}</h3>
-                  <p className="text-sm mb-4" style={{ color: 'rgba(255,255,255,0.45)' }}>{plan.desc}</p>
-                  <div className="mb-6">
-                    <span className="text-4xl font-black" style={{ color: plan.featured ? '#FBBF24' : '#fff' }}>{plan.price}</span>
-                    <span className="text-sm ml-1" style={{ color: 'rgba(255,255,255,0.45)' }}>{plan.period}</span>
-                  </div>
-                  <ul className="space-y-3 flex-1 mb-8">
-                    {plan.features.map(f => (
-                      <li key={f} className="flex items-start gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                        <span style={{ color: '#FBBF24', flexShrink: 0 }}>✓</span> {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    to="/register"
-                    className="block text-center py-3 rounded-xl font-bold text-sm transition-all duration-200"
-                    style={
-                      plan.featured
-                        ? { background: '#FBBF24', color: '#111' }
-                        : { border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }
-                    }
+          </div>
+        </section>
+
+        {/* ── PRICING ── */}
+        <section id="pricing" className="py-20 border-t">
+          <div className="max-w-4xl mx-auto px-6">
+            <Reveal>
+              <div className="text-center mb-14">
+                <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: '#D97706' }}>Pricing</p>
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground">Simple, Transparent Pricing</h2>
+                <p className="mt-3 text-muted-foreground">Start free. Scale as you grow. No hidden fees, ever.</p>
+              </div>
+            </Reveal>
+            <div className="grid md:grid-cols-3 gap-6">
+              {[
+                {
+                  name: 'Starter',
+                  price: 'Free',
+                  period: 'forever',
+                  desc: 'Perfect for getting started',
+                  features: ['1 Business Location', 'Up to 50 review requests/month', 'Basic analytics dashboard', 'Email support'],
+                  cta: 'Get Started Free',
+                  featured: false,
+                },
+                {
+                  name: 'Growth',
+                  price: '$49',
+                  period: '/month',
+                  desc: 'For growing businesses',
+                  features: ['3 Business Locations', 'Unlimited review requests', 'Advanced analytics', 'WhatsApp + SMS + Email', 'AI response suggestions', 'Priority support'],
+                  cta: 'Start 14-Day Free Trial',
+                  featured: true,
+                },
+                {
+                  name: 'Enterprise',
+                  price: 'Custom',
+                  period: 'pricing',
+                  desc: 'For agencies & franchises',
+                  features: ['Unlimited Locations', 'White-label solution', 'Custom integrations', 'Dedicated account manager', 'SLA guarantee', '24/7 phone support'],
+                  cta: 'Contact Sales',
+                  featured: false,
+                },
+              ].map((plan, i) => (
+                <Reveal key={plan.name} delay={i * 0.1}>
+                  <div
+                    className="border rounded-xl p-7 flex flex-col h-full"
+                    style={plan.featured ? { borderColor: '#D97706', borderWidth: 2, background: 'hsl(43 96% 56% / 0.04)' } : { background: 'hsl(var(--card))' }}
                   >
-                    {plan.cta}
+                    {plan.featured && (
+                      <span
+                        className="self-start text-xs font-bold px-2.5 py-0.5 rounded-full mb-3"
+                        style={{ background: '#D97706', color: '#fff' }}
+                      >
+                        Most Popular
+                      </span>
+                    )}
+                    <h3 className="font-bold text-foreground">{plan.name}</h3>
+                    <p className="text-xs text-muted-foreground mb-4">{plan.desc}</p>
+                    <div className="mb-5">
+                      <span className="text-3xl font-bold" style={{ color: plan.featured ? '#D97706' : 'inherit' }}>{plan.price}</span>
+                      <span className="text-sm text-muted-foreground ml-1">{plan.period}</span>
+                    </div>
+                    <ul className="space-y-2 flex-1 mb-6">
+                      {plan.features.map(f => (
+                        <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <Check className="h-4 w-4 shrink-0 mt-0.5" style={{ color: '#D97706' }} /> {f}
+                        </li>
+                      ))}
+                    </ul>
+                    <Link to="/register">
+                      <Button
+                        className="w-full"
+                        variant={plan.featured ? 'default' : 'outline'}
+                        style={plan.featured ? { background: '#D97706', color: '#fff', border: 'none' } : {}}
+                      >
+                        {plan.cta}
+                      </Button>
+                    </Link>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── FAQ ── */}
+        <section className="py-20 border-t bg-muted/30">
+          <div className="max-w-2xl mx-auto px-6">
+            <Reveal>
+              <div className="text-center mb-12">
+                <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: '#D97706' }}>FAQ</p>
+                <h2 className="text-3xl font-bold text-foreground">Questions? We've Got Answers.</h2>
+              </div>
+            </Reveal>
+            <div className="space-y-3">
+              {[
+                { q: "Is this against Google's terms of service?", a: "GETMORE is fully compliant with Google's review policies. We never pay for reviews or use any black-hat tactics. We simply make it easy for genuine customers to share their real experiences." },
+                { q: 'How quickly will I see results?', a: "Most businesses see their first new reviews within 24–48 hours. Significant rating improvements typically happen within 30–90 days, depending on your customer volume." },
+                { q: 'What happens to negative feedback?', a: "Our private feedback filter intercepts unhappy customers before they post publicly. They're redirected to a private resolution form, giving you the chance to make things right." },
+                { q: 'Do I need technical skills?', a: "Zero technical skills required. If you can use a smartphone, you can set up GETMORE. Our guided onboarding takes under 5 minutes." },
+                { q: 'Can I manage multiple locations?', a: "Yes! Our Growth and Enterprise plans let you manage reviews across all your locations from one central dashboard, with individual reporting for each site." },
+              ].map((item, i) => (
+                <Reveal key={i} delay={i * 0.05}>
+                  <details className="border rounded-xl bg-card group">
+                    <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none font-medium text-sm text-foreground">
+                      {item.q}
+                      <span style={{ color: '#D97706' }} className="ml-4 shrink-0 text-lg leading-none">+</span>
+                    </summary>
+                    <p className="px-5 pb-4 text-sm text-muted-foreground leading-relaxed">{item.a}</p>
+                  </details>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── CTA ── */}
+        <section className="py-20 border-t">
+          <div className="max-w-3xl mx-auto px-6 text-center">
+            <Reveal>
+              <div
+                className="border rounded-2xl p-12"
+                style={{ borderColor: 'hsl(43 96% 56% / 0.3)', background: 'hsl(43 96% 56% / 0.05)' }}
+              >
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
+                  Ready to <span style={{ color: '#D97706' }}>GetMore</span> of Everything?
+                </h2>
+                <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+                  Join 10,000+ businesses already using GETMORE to dominate their local Google rankings. No credit card required.
+                </p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <Link to="/register">
+                    <Button size="lg" className="px-8 gap-2" style={{ background: '#D97706', color: '#fff', border: 'none' }}>
+                      Start Free Trial <ArrowRight className="h-4 w-4" />
+                    </Button>
                   </Link>
+                  <a href="mailto:hello@getmore.app">
+                    <Button size="lg" variant="outline" className="px-8">Talk to Sales</Button>
+                  </a>
                 </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── FAQ ── */}
-      <section className="py-24" style={{ background: '#0d0d0d' }}>
-        <div className="max-w-3xl mx-auto px-6">
-          <Reveal>
-            <div className="text-center mb-16">
-              <p className="text-sm font-semibold mb-3" style={{ color: '#FBBF24', letterSpacing: '0.1em' }}>FAQ</p>
-              <h2 className="text-4xl font-black" style={{ color: '#fff' }}>
-                Questions? <span style={{ color: '#FBBF24' }}>We've Got Answers.</span>
-              </h2>
-            </div>
-          </Reveal>
-          <div className="space-y-4">
-            {[
-              { q: 'Is this against Google\'s terms of service?', a: 'GETMORE is fully compliant with Google\'s review policies. We never pay for reviews, write fake reviews, or use any black-hat tactics. We simply make it easy for your genuine customers to share their real experiences.' },
-              { q: 'How quickly will I see results?', a: 'Most businesses see their first new reviews within 24-48 hours of launching their first campaign. Significant rating improvements typically happen within 30-90 days, depending on your customer volume and current review baseline.' },
-              { q: 'What happens to negative feedback?', a: 'Our private feedback filter intercepts unhappy customers before they post publicly. They\'re redirected to a private resolution form, giving you the chance to make things right. This dramatically reduces public negative reviews.' },
-              { q: 'Do I need technical skills to set up GETMORE?', a: 'Zero technical skills required. If you can use a smartphone, you can set up GETMORE. Our guided onboarding takes under 5 minutes, and our support team is available to help every step of the way.' },
-              { q: 'Can I manage multiple business locations?', a: 'Yes! GETMORE is built for multi-location businesses. Our Growth and Enterprise plans let you manage reviews across all your locations from one central dashboard, with individual reporting for each site.' },
-            ].map((item, i) => (
-              <Reveal key={i} delay={i * 0.05}>
-                <details
-                  className="rounded-xl p-6 group"
-                  style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.06)' }}
-                >
-                  <summary
-                    className="font-semibold cursor-pointer list-none flex items-center justify-between"
-                    style={{ color: '#fff' }}
-                  >
-                    {item.q}
-                    <span style={{ color: '#FBBF24' }} className="ml-4 shrink-0">+</span>
-                  </summary>
-                  <p className="mt-4 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                    {item.a}
-                  </p>
-                </details>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA ── */}
-      <section className="py-24">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <Reveal>
-            <div
-              className="rounded-3xl p-12"
-              style={{ background: 'linear-gradient(135deg, rgba(251,191,36,0.12) 0%, rgba(251,191,36,0.04) 100%)', border: '1px solid rgba(251,191,36,0.2)' }}
-            >
-              <h2 className="text-4xl font-black mb-4" style={{ color: '#fff' }}>
-                Ready to <span style={{ color: '#FBBF24' }}>GetMore</span> of Everything?
-              </h2>
-              <p className="text-lg mb-8" style={{ color: 'rgba(255,255,255,0.6)', maxWidth: 500, margin: '16px auto 32px' }}>
-                Join 10,000+ businesses already using GETMORE to dominate their local Google rankings.
-                Start your free trial today — no credit card required.
-              </p>
-              <div className="flex flex-wrap justify-center gap-4">
-                <Link
-                  to="/register"
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-bold transition-all duration-200 hover:scale-105"
-                  style={{ background: '#FBBF24', color: '#111' }}
-                >
-                  Start Free Trial — No Card Needed →
-                </Link>
-                <a
-                  href="mailto:hello@getmore.app"
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-semibold transition-all duration-200"
-                  style={{ border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }}
-                >
-                  Talk to Sales
-                </a>
+                <div className="flex flex-wrap justify-center gap-6 mt-6">
+                  {['Free 14-day trial', '10,000+ businesses trust us', 'Setup in 5 minutes'].map(t => (
+                    <span key={t} className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Check className="h-3.5 w-3.5" style={{ color: '#D97706' }} /> {t}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div className="flex justify-center gap-8 mt-8">
-                {['Free 14-day trial', '10,000+ businesses trust us', 'Setup in 5 minutes'].map(t => (
-                  <div key={t} className="flex items-center gap-1.5 text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                    <span style={{ color: '#FBBF24' }}>✓</span> {t}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
+            </Reveal>
+          </div>
+        </section>
+      </main>
 
       {/* ── FOOTER ── */}
-      <footer style={{ background: '#0d0d0d', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        <div className="max-w-7xl mx-auto px-6 py-16">
-          <div className="grid md:grid-cols-4 gap-10">
-            <div className="md:col-span-1">
+      <footer className="py-10 border-t">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid md:grid-cols-4 gap-10 mb-10">
+            <div>
               <img
                 src="/getmore-logo.png"
                 alt="GETMORE"
-                style={{ width: 240, height: 'auto' }}
-                className="object-contain select-none mb-4"
+                style={{ width: 200, height: 'auto' }}
+                className="object-contain select-none mb-3"
                 draggable="false"
               />
-              <p className="text-sm leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-3">
                 The world's most powerful Google review platform for local businesses.
               </p>
-              <p className="text-sm font-bold" style={{ color: '#FBBF24' }}>Powered By DMAX</p>
+              <p className="text-sm font-semibold" style={{ color: '#D97706' }}>Powered By DMAX</p>
             </div>
             {[
-              {
-                title: 'Product',
-                links: ['Features', 'Pricing', 'Integrations', 'Changelog', 'Roadmap'],
-              },
-              {
-                title: 'Company',
-                links: ['About', 'Blog', 'Careers', 'Press', 'Contact'],
-              },
-              {
-                title: 'Legal',
-                links: ['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'GDPR'],
-              },
+              { title: 'Product', links: ['Features', 'Pricing', 'Integrations', 'Changelog'] },
+              { title: 'Company', links: ['About', 'Blog', 'Careers', 'Contact'] },
+              { title: 'Legal', links: ['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'GDPR'] },
             ].map(col => (
               <div key={col.title}>
-                <h4 className="font-bold text-sm mb-4" style={{ color: '#fff' }}>{col.title}</h4>
-                <ul className="space-y-3">
+                <h4 className="font-semibold text-sm text-foreground mb-3">{col.title}</h4>
+                <ul className="space-y-2">
                   {col.links.map(link => (
                     <li key={link}>
-                      <a
-                        href="#"
-                        className="text-sm transition-colors duration-200"
-                        style={{ color: 'rgba(255,255,255,0.45)' }}
-                        onMouseEnter={e => (e.target.style.color = '#FBBF24')}
-                        onMouseLeave={e => (e.target.style.color = 'rgba(255,255,255,0.45)')}
-                      >
-                        {link}
-                      </a>
+                      <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">{link}</a>
                     </li>
                   ))}
                 </ul>
               </div>
             ))}
           </div>
-          <div
-            className="flex flex-col md:flex-row items-center justify-between mt-12 pt-8"
-            style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
-          >
-            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          <div className="flex flex-col md:flex-row items-center justify-between pt-6 border-t gap-3">
+            <p className="text-sm text-muted-foreground">
+              <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400 inline mr-1" />
               © {new Date().getFullYear()} GETMORE. All rights reserved.
             </p>
-            <div className="flex gap-4 mt-4 md:mt-0">
+            <div className="flex gap-4">
               {['Twitter', 'LinkedIn', 'Instagram', 'Facebook'].map(s => (
-                <a
-                  key={s}
-                  href="#"
-                  className="text-sm transition-colors duration-200"
-                  style={{ color: 'rgba(255,255,255,0.35)' }}
-                  onMouseEnter={e => (e.target.style.color = '#FBBF24')}
-                  onMouseLeave={e => (e.target.style.color = 'rgba(255,255,255,0.35)')}
-                >
-                  {s}
-                </a>
+                <a key={s} href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">{s}</a>
               ))}
             </div>
           </div>
