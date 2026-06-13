@@ -68,21 +68,13 @@ export default function Login() {
       <div className="w-full max-w-md relative">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="h-16 w-16 rounded-2xl bg-[#FBBF24] flex items-center justify-center shadow-2xl shadow-[#FBBF24]/30 mb-4">
-            <svg viewBox="0 0 24 24" className="h-9 w-9" fill="none">
-              <path
-                d="M12 2L14.4 8.6H21.5L15.9 12.5L18.2 19.1L12 15.2L5.8 19.1L8.1 12.5L2.5 8.6H9.6Z"
-                fill="#111111"
-              />
-            </svg>
-          </div>
-          <h1 className="font-sora font-extrabold text-white text-[32px] leading-tight tracking-tight">
-            GETMORE
-          </h1>
-          <p className="text-[#FBBF24] text-[12px] font-semibold tracking-widest uppercase mt-1">
-            Get More Reviews
-          </p>
-          <p className="text-white/30 text-[11px] mt-1">Powered by DMAX</p>
+          <img
+            src="/getmore-logo.svg"
+            alt="GETMORE"
+            className="h-20 w-auto object-contain select-none drop-shadow-[0_0_32px_rgba(251,191,36,0.25)]"
+            draggable="false"
+          />
+          <p className="text-white/30 text-[11px] mt-3">Powered by DMAX</p>
         </div>
 
         {/* Card */}

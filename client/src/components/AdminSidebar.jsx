@@ -22,26 +22,25 @@ const NAV = [
 /* ── GETMORE Logo ────────────────────────────────────────────────── */
 function GetmoreLogo({ collapsed }) {
   return (
-    <div className={cn('flex items-center gap-3 shrink-0', collapsed && 'md:justify-center')}>
-      {/* Gold star-badge icon */}
-      <div className="h-10 w-10 rounded-xl bg-[#FBBF24] flex items-center justify-center shrink-0 shadow-lg shadow-[#FBBF24]/30">
-        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none">
-          <path
-            d="M12 2L14.4 8.6H21.5L15.9 12.5L18.2 19.1L12 15.2L5.8 19.1L8.1 12.5L2.5 8.6H9.6Z"
-            fill="#111111"
-            strokeWidth="0"
-          />
-        </svg>
-      </div>
-      {/* Text — hidden when collapsed on desktop */}
-      <div className={cn('min-w-0 overflow-hidden', collapsed && 'md:hidden')}>
-        <p className="font-sora font-extrabold text-white text-[18px] leading-tight tracking-tight">
-          GETMORE
-        </p>
-        <p className="text-[10px] font-medium text-[#FBBF24] mt-0.5 tracking-wide uppercase">
-          Get More Reviews
-        </p>
-      </div>
+    <div className={cn('flex items-center gap-2 shrink-0', collapsed && 'md:justify-center')}>
+      {/* Full logo image — hide text variant when collapsed */}
+      {collapsed ? (
+        /* Collapsed: just the O-star icon crop */
+        <div className="h-10 w-10 rounded-xl bg-[#FBBF24] flex items-center justify-center shrink-0">
+          <svg viewBox="0 0 24 24" className="h-6 w-6">
+            <circle cx="12" cy="12" r="11" fill="#D4A017"/>
+            <circle cx="12" cy="12" r="8"  fill="#111111"/>
+            <polygon points="12,4 13.76,9.46 19.51,9.46 14.88,12.54 16.63,18 12,14.92 7.37,18 9.12,12.54 4.49,9.46 10.24,9.46" fill="#D4A017"/>
+          </svg>
+        </div>
+      ) : (
+        <img
+          src="/getmore-logo.svg"
+          alt="GETMORE"
+          className="h-12 w-auto object-contain select-none"
+          draggable="false"
+        />
+      )}
     </div>
   );
 }
