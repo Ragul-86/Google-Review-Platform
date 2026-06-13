@@ -218,7 +218,8 @@ export default function Landing() {
             src="/getmore-logo.png"
             alt="GETMORE"
             draggable="false"
-            style={{ height: 40, width: 'auto', maxWidth: 160, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+            className="gm-logo-nav"
+            style={{ width: 'auto', objectFit: 'contain', display: 'block', flexShrink: 0 }}
           />
           <nav style={{ display: 'flex', gap: 32 }}>
             {['Features','How It Works','Pricing'].map(l => (
@@ -642,7 +643,8 @@ export default function Landing() {
                 src="/getmore-logo.png"
                 alt="GETMORE"
                 draggable="false"
-                style={{ height: 40, width: 'auto', maxWidth: 160, objectFit: 'contain', display: 'block', marginBottom: 16, flexShrink: 0 }}
+                className="gm-logo-footer"
+                style={{ width: 'auto', objectFit: 'contain', display: 'block', marginBottom: 18, flexShrink: 0 }}
               />
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.42)', lineHeight: 1.7, marginBottom: 16, maxWidth: 300 }}>
                 GetMore Reviews. GetMore Customers. GetMore Trust, GetMore Growth
@@ -683,6 +685,28 @@ export default function Landing() {
       <style>{`
         html{scroll-behavior:smooth}
         *{box-sizing:border-box;margin:0;padding:0}
+
+        /* ── GETMORE logo — navbar ── */
+        .gm-logo-nav{
+          height: 44px;
+          max-width: 180px;
+        }
+        /* ── GETMORE logo — footer ── */
+        .gm-logo-footer{
+          height: 52px;
+          max-width: 220px;
+        }
+        /* Tablet */
+        @media(max-width:900px){
+          .gm-logo-nav   { height: 40px; max-width: 160px; }
+          .gm-logo-footer{ height: 48px; max-width: 200px; }
+        }
+        /* Mobile */
+        @media(max-width:600px){
+          .gm-logo-nav   { height: 34px; max-width: 140px; }
+          .gm-logo-footer{ height: 42px; max-width: 180px; }
+        }
+
         @media(max-width:900px){
           .hero-grid{grid-template-columns:1fr!important}
           .two-col{grid-template-columns:1fr!important}
