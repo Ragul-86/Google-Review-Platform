@@ -143,10 +143,10 @@ export function ClientSidebar({ collapsed, mobileOpen, onClose }) {
           <Tooltip>
             <TooltipTrigger asChild>
               <div className={['flex items-center gap-2.5 px-3 py-2', collapsed ? 'md:justify-center md:px-0' : ''].join(' ')}>
-                <img src="/dmax-logo.png" alt="DMAX" className="h-6 w-auto shrink-0 opacity-55" />
+                <img src="/getmore-logo.png" alt="GETMORE" className="h-6 w-auto shrink-0 opacity-55" />
                 <div className={['min-w-0 overflow-hidden', collapsed ? 'md:hidden' : ''].join(' ')}>
                   <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest leading-none">Powered by</p>
-                  <p className="text-[12px] font-bold text-white/50 leading-tight mt-0.5">DMAX</p>
+                  <p className="text-[12px] font-bold text-white/50 leading-tight mt-0.5">GETMORE</p>
                 </div>
               </div>
             </TooltipTrigger>

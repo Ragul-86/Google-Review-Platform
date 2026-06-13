@@ -148,10 +148,10 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
         <div className="shrink-0 border-t border-white/8 px-3 py-3 space-y-1">
           {/* Powered by DMAX */}
           <div className={cn('flex items-center gap-2.5 px-3 py-2 mb-1', collapsed && 'md:justify-center md:px-0')}>
-            <img src="/dmax-logo.png" alt="DMAX" className="h-6 w-auto shrink-0 opacity-60" />
+            <img src="/getmore-logo.png" alt="GETMORE" className="h-6 w-auto shrink-0 opacity-60" />
             <div className={cn('min-w-0 overflow-hidden', collapsed && 'md:hidden')}>
               <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest leading-none">Powered by</p>
-              <p className="text-[12px] font-bold text-white/50 leading-tight mt-0.5">DMAX</p>
+              <p className="text-[12px] font-bold text-white/50 leading-tight mt-0.5">GETMORE</p>
             </div>
           </div>
 
