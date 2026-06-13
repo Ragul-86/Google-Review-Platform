@@ -50,10 +50,18 @@ function AnimatedHeadline() {
   }, []);
   return (
     <div style={{ fontWeight: 900, lineHeight: 1.05, letterSpacing: '-0.03em', fontSize: 'clamp(38px,5.2vw,78px)' }}>
+      {/* Line 1 — always white, never cycles */}
       <div style={{ color: '#fff' }}>GetMore Reviews.</div>
-      <div>
+      {/* Line 2 — "GetMore" is static gold, only the word after it cycles */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', flexWrap: 'nowrap' }}>
         <span style={{ color: GOLD }}>GetMore&nbsp;</span>
-        <span style={{ display: 'inline-block', overflow: 'hidden', verticalAlign: 'bottom', lineHeight: 'inherit' }}>
+        {/* Clip container: explicit height = lineHeight (1.05em) so overflow:hidden cuts off entering/exiting words */}
+        <span style={{
+          display: 'inline-block',
+          overflow: 'hidden',
+          height: '1.05em',
+          verticalAlign: 'bottom',
+        }}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.span
               key={idx}
