@@ -173,6 +173,99 @@ function DashboardMockup() {
   );
 }
 
+/* ─── Contact Form ───────────────────────────────────────────────── */
+function ContactForm() {
+  const [form, setForm] = useState({ name: '', business: '', email: '', phone: '', message: '' });
+  const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  function set(k) { return e => setForm(f => ({ ...f, [k]: e.target.value })); }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.name || !form.email) return;
+    setLoading(true);
+    // Simulate submission — wire up to your backend endpoint when ready
+    await new Promise(r => setTimeout(r, 1000));
+    setLoading(false);
+    setSent(true);
+  }
+
+  const inputStyle = {
+    width: '100%', background: '#1c1c1f', border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 12, padding: '14px 16px', fontSize: 14, color: '#fff',
+    outline: 'none', transition: 'border-color 0.2s',
+    fontFamily: 'inherit',
+  };
+
+  if (sent) return (
+    <div style={{ textAlign: 'center', padding: '56px 24px', background: '#18181b', border: `1px solid ${GOLD}30`, borderRadius: 24 }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
+      <h3 style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 10 }}>Message Sent!</h3>
+      <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7 }}>
+        Thank you, <strong style={{ color: GOLD }}>{form.name}</strong>! Our team will contact you within 24 hours to schedule your demo.
+      </p>
+    </div>
+  );
+
+  return (
+    <form onSubmit={handleSubmit} style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 24, padding: '40px 36px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        {/* Name */}
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Full Name *</label>
+          <input required value={form.name} onChange={set('name')} placeholder="John Smith" style={inputStyle}
+            onFocus={e => e.target.style.borderColor = GOLD} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+          />
+        </div>
+        {/* Business */}
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Business Name</label>
+          <input value={form.business} onChange={set('business')} placeholder="Your Business" style={inputStyle}
+            onFocus={e => e.target.style.borderColor = GOLD} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+          />
+        </div>
+        {/* Email */}
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Email Address *</label>
+          <input required type="email" value={form.email} onChange={set('email')} placeholder="you@example.com" style={inputStyle}
+            onFocus={e => e.target.style.borderColor = GOLD} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+          />
+        </div>
+        {/* Phone */}
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Phone Number</label>
+          <input type="tel" value={form.phone} onChange={set('phone')} placeholder="+1 234 567 8900" style={inputStyle}
+            onFocus={e => e.target.style.borderColor = GOLD} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+          />
+        </div>
+      </div>
+      {/* Message */}
+      <div>
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Message</label>
+        <textarea value={form.message} onChange={set('message')} rows={4} placeholder="Tell us about your business and what you're looking to achieve..." style={{ ...inputStyle, resize: 'vertical', minHeight: 100 }}
+          onFocus={e => e.target.style.borderColor = GOLD} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+        />
+      </div>
+      {/* Submit */}
+      <button type="submit" disabled={loading} style={{
+        background: loading ? 'rgba(251,191,36,0.6)' : GOLD, color: DARK, fontWeight: 800, fontSize: 16,
+        padding: '15px 32px', borderRadius: 12, border: 'none', cursor: loading ? 'wait' : 'pointer',
+        boxShadow: `0 8px 24px ${GOLD}35`, transition: 'all 0.2s', marginTop: 4, width: '100%',
+        fontFamily: 'inherit',
+      }}
+        onMouseEnter={e => { if (!loading) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 14px 32px ${GOLD}50`; }}}
+        onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = `0 8px 24px ${GOLD}35`; }}
+      >
+        {loading ? 'Sending…' : 'Book a Demo →'}
+      </button>
+      <p style={{ textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.28)', marginTop: 4 }}>
+        We respond within 24 hours. No spam, ever.
+      </p>
+    </form>
+  );
+}
+
 /* ─── Section Label ──────────────────────────────────────────────── */
 function Label({ children }) {
   return (
@@ -222,8 +315,8 @@ export default function Landing() {
             style={{ width: 'auto', objectFit: 'contain', display: 'block', flexShrink: 0 }}
           />
           <nav style={{ display: 'flex', gap: 32 }}>
-            {['Features','How It Works','Pricing'].map(l => (
-              <a key={l} href={`#${l.toLowerCase().replace(/\s+/g,'-')}`}
+            {['Features','How It Works','Pricing','Contact'].map(l => (
+              <a key={l} href={l === 'Contact' ? '#contact' : `#${l.toLowerCase().replace(/\s+/g,'-')}`}
                 style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.6)', textDecoration: 'none', transition: 'color 0.2s' }}
                 onMouseEnter={e=>e.target.style.color=GOLD} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.6)'}
               >{l}</a>
@@ -231,10 +324,10 @@ export default function Landing() {
           </nav>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <Link to="/login" style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.75)', textDecoration: 'none', padding: '8px 14px' }}>Sign In</Link>
-            <Link to="/register" style={{ fontSize: 14, fontWeight: 700, color: DARK, background: GOLD, padding: '10px 22px', borderRadius: 10, textDecoration: 'none', transition: 'opacity 0.2s, transform 0.2s' }}
+            <a href="#contact" style={{ fontSize: 14, fontWeight: 700, color: DARK, background: GOLD, padding: '10px 22px', borderRadius: 10, textDecoration: 'none', transition: 'opacity 0.2s, transform 0.2s' }}
               onMouseEnter={e=>{e.currentTarget.style.opacity='0.88';e.currentTarget.style.transform='translateY(-1px)'}}
               onMouseLeave={e=>{e.currentTarget.style.opacity='1';e.currentTarget.style.transform='none'}}
-            >Start Free Trial</Link>
+            >Book a Demo</a>
           </div>
         </div>
       </header>
@@ -257,14 +350,14 @@ export default function Landing() {
               GETMORE helps businesses collect more Google reviews through AI-powered review suggestions, WhatsApp Automated Message to collect review, QR codes, private negative feedback collection, and real-time analytics.
             </p>
             <div style={{ display: 'flex', gap: 14, marginTop: 36, flexWrap: 'wrap' }}>
-              <Link to="/register" style={{ display: 'inline-flex', alignItems: 'center', background: GOLD, color: DARK, fontWeight: 800, fontSize: 15, padding: '14px 30px', borderRadius: 12, textDecoration: 'none', boxShadow: `0 8px 28px ${GOLD}40`, transition: 'all 0.2s' }}
+              <a href="#contact" style={{ display: 'inline-flex', alignItems: 'center', background: GOLD, color: DARK, fontWeight: 800, fontSize: 15, padding: '14px 30px', borderRadius: 12, textDecoration: 'none', boxShadow: `0 8px 28px ${GOLD}40`, transition: 'all 0.2s' }}
                 onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow=`0 14px 36px ${GOLD}55`}}
                 onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow=`0 8px 28px ${GOLD}40`}}
-              >Start Free Trial →</Link>
+              >Book a Demo →</a>
               <a href="#how-it-works" style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid rgba(255,255,255,0.18)', color: '#fff', fontWeight: 600, fontSize: 15, padding: '14px 28px', borderRadius: 12, textDecoration: 'none', transition: 'all 0.2s' }}
                 onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background=`${GOLD}0d`}}
                 onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.18)';e.currentTarget.style.background='transparent'}}
-              >Book Demo</a>
+              >See How It Works</a>
             </div>
             <div style={{ display: 'flex', gap: 22, marginTop: 26, flexWrap: 'wrap' }}>
               {['No credit card required','5-minute setup','Cancel anytime'].map(t => (
@@ -619,16 +712,32 @@ export default function Landing() {
                 Start collecting more Google reviews, improving customer trust, and growing your business with GETMORE.
               </p>
               <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 40, flexWrap: 'wrap' }}>
-                <Link to="/register" style={{ display: 'inline-flex', alignItems: 'center', background: GOLD, color: DARK, fontWeight: 800, fontSize: 16, padding: '16px 36px', borderRadius: 14, textDecoration: 'none', boxShadow: `0 10px 32px ${GOLD}40`, transition: 'all 0.2s' }}
+                <a href="#contact" style={{ display: 'inline-flex', alignItems: 'center', background: GOLD, color: DARK, fontWeight: 800, fontSize: 16, padding: '16px 36px', borderRadius: 14, textDecoration: 'none', boxShadow: `0 10px 32px ${GOLD}40`, transition: 'all 0.2s' }}
                   onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow=`0 16px 40px ${GOLD}55`}}
                   onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow=`0 10px 32px ${GOLD}40`}}
-                >Start Free Trial →</Link>
-                <a href="#how-it-works" style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontWeight: 600, fontSize: 16, padding: '16px 32px', borderRadius: 14, textDecoration: 'none', transition: 'all 0.2s' }}
-                  onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background=`${GOLD}0d`}}
-                  onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.2)';e.currentTarget.style.background='transparent'}}
-                >Book Demo</a>
+                >Book a Demo →</a>
               </div>
             </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ══ CONTACT ═══════════════════════════════════════════════ */}
+      <Div /><section id="contact" style={{ ...SEC, background: '#0c0c0c' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 24px' }}>
+          <Reveal>
+            <div style={{ textAlign: 'center', marginBottom: 48 }}>
+              <Label>Contact Us</Label>
+              <h2 style={{ fontSize: 'clamp(26px,3.4vw,46px)', fontWeight: 900, marginTop: 18, letterSpacing: '-0.025em' }}>
+                Book a Demo with <span style={{ color: GOLD }}>GETMORE</span>
+              </h2>
+              <p style={{ marginTop: 14, fontSize: 16, color: 'rgba(255,255,255,0.52)', lineHeight: 1.7 }}>
+                Fill in your details and our team will get back to you within 24 hours.
+              </p>
+            </div>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <ContactForm />
           </Reveal>
         </div>
       </section>
@@ -655,8 +764,8 @@ export default function Landing() {
             <div>
               <h4 style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 18 }}>Products</h4>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {['Features','Pricing','Contact'].map(l => (
-                  <li key={l}><a href="#" style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color=GOLD} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.45)'}>{l}</a></li>
+                {[['Features','#features'],['Pricing','#pricing'],['Contact','#contact']].map(([l,href]) => (
+                  <li key={l}><a href={href} style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color=GOLD} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.45)'}>{l}</a></li>
                 ))}
               </ul>
             </div>
