@@ -71,8 +71,9 @@ export default function Login() {
           <img
             src="/getmore-logo.png"
             alt="GETMORE"
-            className="h-20 w-auto object-contain select-none drop-shadow-[0_0_32px_rgba(251,191,36,0.25)]"
             draggable="false"
+            className="select-none drop-shadow-[0_0_32px_rgba(251,191,36,0.25)]"
+            style={{ height: 52, width: 'auto', maxWidth: 200, objectFit: 'contain', display: 'block' }}
           />
           <p className="text-white/30 text-[11px] mt-3">Powered by DMAX</p>
         </div>

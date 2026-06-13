@@ -131,7 +131,7 @@ export function AdminLayout() {
           {/* Right: Super Admin badge (gold) + profile */}
           <div className="flex items-center gap-3 shrink-0">
             <div className="hidden sm:flex items-center gap-2 bg-[#111111] border border-white/10 px-3 py-1.5 rounded-full">
-              <img src="/getmore-logo.png" alt="GETMORE" className="h-5 w-auto object-contain" draggable="false" />
+              <img src="/getmore-logo.png" alt="GETMORE" draggable="false" style={{ height: 22, width: 'auto', objectFit: 'contain', display: 'block', flexShrink: 0 }} />
               <span className="text-[#FBBF24] text-[11px] font-bold font-sora tracking-wide">Super Admin</span>
             </div>
             <ProfileMenu user={user} onLogout={handleLogout} />

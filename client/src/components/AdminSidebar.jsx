@@ -87,8 +87,8 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
               <img
                 src="/getmore-logo.png"
                 alt="GETMORE"
-                className="object-contain select-none"
-                style={{ width: 180, maxWidth: 180, height: 'auto', maxHeight: 50 }}
+                className="select-none"
+                style={{ height: 40, width: 'auto', maxWidth: 160, objectFit: 'contain', display: 'block', flexShrink: 0 }}
                 draggable="false"
               />
               <p className="text-[#FBBF24] text-[11px] font-semibold mt-2 tracking-wide">

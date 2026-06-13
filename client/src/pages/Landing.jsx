@@ -214,7 +214,12 @@ export default function Landing() {
         transition: 'all 0.3s ease',
       }}>
         <div style={{ ...S, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <img src="/getmore-logo.png" alt="GETMORE" style={{ height: 44, width: 'auto', objectFit: 'contain' }} draggable="false" />
+          <img
+            src="/getmore-logo.png"
+            alt="GETMORE"
+            draggable="false"
+            style={{ height: 40, width: 'auto', maxWidth: 160, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+          />
           <nav style={{ display: 'flex', gap: 32 }}>
             {['Features','How It Works','Pricing'].map(l => (
               <a key={l} href={`#${l.toLowerCase().replace(/\s+/g,'-')}`}
@@ -633,7 +638,12 @@ export default function Landing() {
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 56, marginBottom: 48 }}>
             {/* Brand */}
             <div>
-              <img src="/getmore-logo.png" alt="GETMORE" style={{ height: 48, width: 'auto', objectFit: 'contain', marginBottom: 18 }} draggable="false" />
+              <img
+                src="/getmore-logo.png"
+                alt="GETMORE"
+                draggable="false"
+                style={{ height: 40, width: 'auto', maxWidth: 160, objectFit: 'contain', display: 'block', marginBottom: 16, flexShrink: 0 }}
+              />
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.42)', lineHeight: 1.7, marginBottom: 16, maxWidth: 300 }}>
                 GetMore Reviews. GetMore Customers. GetMore Trust, GetMore Growth
               </p>
