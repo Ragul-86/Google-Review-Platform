@@ -6,6 +6,7 @@ import {
   QrCode, ChevronRight, ArrowRight, Check, Menu, X,
   TrendingUp, Download, Phone, Building2,
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 /* ── Scroll animation hook ──────────────────────────────────────────── */
 function useInView(threshold = 0.12) {
@@ -122,6 +123,75 @@ function DashboardMockup() {
       <div className="absolute -top-4 -right-4 bg-[#111111] rounded-xl px-3 py-2 flex items-center gap-2 border border-[#FBBF24]/30 shadow-lg">
         <span className="text-sm">📲</span>
         <span className="text-[12px] font-bold text-[#FBBF24]">WhatsApp sent</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Animated Hero Headline ─────────────────────────────────────────── */
+const CYCLE_WORDS = ['Customers.', 'Trust.', 'Growth.'];
+
+function AnimatedHeadline() {
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % CYCLE_WORDS.length), 2000);
+    return () => clearInterval(t);
+  }, []);
+
+  /* Gold gradient on "More" */
+  const Brand = ({ size }) => (
+    <span style={{ fontSize: size }}>
+      <span style={{ color: '#FFFFFF' }}>Get</span>
+      <span style={{
+        background: 'linear-gradient(135deg,#FBBF24 0%,#F59E0B 50%,#D97706 100%)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        backgroundClip: 'text',
+      }}>More</span>
+    </span>
+  );
+
+  return (
+    <div className="font-sora font-black leading-[1.04] tracking-tight select-none"
+      style={{ fontSize:'clamp(44px,6vw,88px)', fontWeight:900 }}>
+
+      {/* Line 1 — fully static */}
+      <div className="text-white whitespace-nowrap">
+        <Brand />{' '}
+        <span style={{ color:'#FFFFFF' }}>Reviews.</span>
+      </div>
+
+      {/* Line 2 — "GetMore " fixed, only last word animates */}
+      <div className="flex items-baseline gap-[0.22em] overflow-hidden"
+        style={{ height:'1.12em' }}>
+        {/* Fixed prefix */}
+        <span className="whitespace-nowrap shrink-0">
+          <Brand />
+        </span>
+        {/* Animated word in a fixed-width clipping container */}
+        <div className="relative overflow-hidden shrink-0"
+          style={{ height:'1.12em', minWidth:'5.2ch' }}>
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span
+              key={CYCLE_WORDS[idx]}
+              initial={{ y: '100%', opacity: 0 }}
+              animate={{ y: '0%', opacity: 1 }}
+              exit={{ y: '-100%', opacity: 0 }}
+              transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
+              className="absolute inset-0 flex items-baseline"
+              style={{
+                background: 'linear-gradient(135deg,#FBBF24 0%,#F59E0B 50%,#D97706 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {CYCLE_WORDS[idx]}
+            </motion.span>
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
@@ -285,7 +355,7 @@ export default function Landing() {
 
   const ANALYTICS_ITEMS = [
     { icon: Star,          label: 'Google Reviews' },
-    { icon: MessageSquare, label: 'Private Feedback' },
+    { icon: MessageSquare, label: 'Private Negative Feedback' },
     { icon: Users,         label: 'Customer Activity' },
     { icon: Zap,           label: 'Service Performance' },
     { icon: TrendingUp,    label: 'Conversion Rates' },
@@ -316,13 +386,9 @@ export default function Landing() {
                   <Star className="w-3.5 h-3.5 fill-[#FBBF24]" /> AI-Powered Google Review Growth Platform
                 </span>
               </Reveal>
-              <Reveal delay={100}>
-                <h1 className="font-sora font-black text-white leading-[1.06] tracking-tight"
-                  style={{ fontSize:'clamp(32px,4.5vw,60px)' }}>
-                  GetMore Reviews. GetMore Customers.<br/>
-                  <span className="text-[#FBBF24]">GetMore Trust, GetMore Growth</span>
-                </h1>
-              </Reveal>
+              <div>
+                <AnimatedHeadline />
+              </div>
               <Reveal delay={200}>
                 <p className="text-white/50 text-[17px] leading-relaxed max-w-[520px]">
                   GETMORE helps businesses collect more Google reviews through AI-powered review suggestions, WhatsApp Automated Message to collect review, QR codes, private negative feedback collection, and real-time analytics.
@@ -531,7 +597,7 @@ export default function Landing() {
             <div>
               <Reveal>
                 <span className="inline-flex items-center gap-2 bg-amber-50 text-amber-800 border border-amber-200 text-[13px] font-semibold px-4 py-1.5 rounded-full">
-                  <Shield className="w-3.5 h-3.5" /> PRIVATE FEEDBACK PROTECTION
+                  <Shield className="w-3.5 h-3.5" /> PRIVATE Negative FEEDBACK PROTECTION
                 </span>
               </Reveal>
               <Reveal delay={100}>
@@ -566,7 +632,7 @@ export default function Landing() {
                       <Shield className="w-5 h-5 text-[#FBBF24]" />
                     </div>
                     <div>
-                      <div className="text-white font-sora font-bold text-[16px]">Private Feedback</div>
+                      <div className="text-white font-sora font-bold text-[16px]">Private Negative Feedback</div>
                       <div className="text-white/40 text-[12px] mt-0.5">Redirected from Google Reviews</div>
                     </div>
                   </div>
@@ -785,7 +851,4 @@ export default function Landing() {
             </p>
           </div>
         </div>
-      </footer>
-    </div>
-  );
-}
+      <
