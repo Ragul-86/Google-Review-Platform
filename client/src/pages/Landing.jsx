@@ -127,8 +127,14 @@ function Navbar() {
         'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
         scrolled ? 'bg-[#111111]/[0.97] backdrop-blur-md shadow-[0_1px_0_rgba(255,255,255,0.06)]' : 'bg-transparent',
       )}>
-        <div className="max-w-[1200px] mx-auto px-6 h-[68px] flex items-center justify-between">
-          <img src="/getmore-logo.png" alt="GETMORE" className="h-9 w-auto object-contain" draggable="false" />
+        <div className="max-w-[1200px] mx-auto px-8 flex items-center justify-between" style={{ height: 84 }}>
+          <img
+            src="/getmore-logo.png"
+            alt="GETMORE"
+            className="object-contain flex-shrink-0"
+            style={{ width: 200, height: 'auto', maxHeight: 54 }}
+            draggable="false"
+          />
           <div className="hidden md:flex items-center gap-8">
             {[['#how-it-works','How It Works'],['#features','Features'],['#analytics','Analytics'],['#for-who','Industries']].map(([href,label]) => (
               <a key={href} href={href} className="text-white/60 hover:text-white text-[14px] font-medium transition-colors">{label}</a>
@@ -147,6 +153,7 @@ function Navbar() {
       </nav>
       {open && (
         <div className="fixed inset-0 z-40 bg-[#111111] flex flex-col items-center justify-center gap-8" onClick={() => setOpen(false)}>
+          <img src="/getmore-logo.png" alt="GETMORE" className="object-contain mb-4" style={{ width: 180, height: 'auto', maxHeight: 50 }} draggable="false" />
           {[['#how-it-works','How It Works'],['#features','Features'],['#analytics','Analytics'],['#for-who','Industries']].map(([href,label]) => (
             <a key={href} href={href} className="text-white text-2xl font-bold font-sora">{label}</a>
           ))}
@@ -509,9 +516,17 @@ export default function Landing() {
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-12 pb-12 border-b border-white/[0.06]">
             <div>
-              <img src="/getmore-logo.png" alt="GETMORE" className="h-9 w-auto object-contain mb-4" draggable="false" />
-              <p className="text-white/35 text-[13px] leading-relaxed max-w-[220px]">GetMore Reviews. GetMore Customers. GetMore Trust. GetMore Growth.</p>
-              <p className="text-white/20 text-[11px] font-bold tracking-widest mt-4">POWERED BY DMAX</p>
+              <img
+                src="/getmore-logo.png"
+                alt="GETMORE"
+                className="object-contain mb-4"
+                style={{ width: 240, height: 'auto', maxHeight: 68 }}
+                draggable="false"
+              />
+              <p className="text-white/60 text-[16px] font-medium leading-relaxed mt-4">
+                GetMore Reviews.<br/>GetMore Customers.<br/>GetMore Trust.<br/>GetMore Growth.
+              </p>
+              <p className="text-[#FBBF24] text-[14px] font-semibold mt-4">Powered By DMAX</p>
             </div>
             {[
               { title:'Product', links:['#features','#how-it-works','#analytics','#for-who'], labels:['Features','How It Works','Analytics','Industries'] },

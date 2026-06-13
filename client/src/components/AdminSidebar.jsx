@@ -19,32 +19,6 @@ const NAV = [
   { to: '/admin/settings',   label: 'Settings',    icon: Settings },
 ];
 
-/* ── GETMORE Logo ────────────────────────────────────────────────── */
-function GetmoreLogo({ collapsed }) {
-  return (
-    <div className={cn('flex items-center gap-2 shrink-0', collapsed && 'md:justify-center')}>
-      {/* Full logo image — hide text variant when collapsed */}
-      {collapsed ? (
-        /* Collapsed: just the O-star icon crop */
-        <div className="h-10 w-10 rounded-xl bg-[#FBBF24] flex items-center justify-center shrink-0">
-          <svg viewBox="0 0 24 24" className="h-6 w-6">
-            <circle cx="12" cy="12" r="11" fill="#D4A017"/>
-            <circle cx="12" cy="12" r="8"  fill="#111111"/>
-            <polygon points="12,4 13.76,9.46 19.51,9.46 14.88,12.54 16.63,18 12,14.92 7.37,18 9.12,12.54 4.49,9.46 10.24,9.46" fill="#D4A017"/>
-          </svg>
-        </div>
-      ) : (
-        <img
-          src="/getmore-logo.png"
-          alt="GETMORE"
-          className="h-12 w-auto object-contain select-none"
-          draggable="false"
-        />
-      )}
-    </div>
-  );
-}
-
 /* ════════════════════════════════════════════════════════════════════ */
 export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
   const { logout } = useAuth();
@@ -89,14 +63,39 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         )}
       >
-        {/* ── Brand ───────────────────────────────────────────────── */}
+        {/* ── Brand Area ─────────────────────────────────────────────── */}
         <div
           className={cn(
-            'flex items-center shrink-0 border-b border-white/8 px-5 py-5',
-            collapsed ? 'md:justify-center md:px-0' : '',
+            'shrink-0 border-b border-white/[0.08]',
+            collapsed
+              ? 'flex items-center justify-center py-5 px-0'
+              : 'flex flex-col px-6 pt-5 pb-4',
           )}
+          style={{ minHeight: collapsed ? 72 : 90 }}
         >
-          <GetmoreLogo collapsed={collapsed} />
+          {collapsed ? (
+            /* Collapsed: gold star icon only */
+            <div className="h-10 w-10 rounded-xl bg-[#FBBF24] flex items-center justify-center shrink-0">
+              <svg viewBox="0 0 24 24" className="h-6 w-6">
+                <circle cx="12" cy="12" r="11" fill="#D4A017"/>
+                <circle cx="12" cy="12" r="8"  fill="#111111"/>
+                <polygon points="12,4 13.76,9.46 19.51,9.46 14.88,12.54 16.63,18 12,14.92 7.37,18 9.12,12.54 4.49,9.46 10.24,9.46" fill="#D4A017"/>
+              </svg>
+            </div>
+          ) : (
+            <>
+              <img
+                src="/getmore-logo.png"
+                alt="GETMORE"
+                className="object-contain select-none"
+                style={{ width: 180, maxWidth: 180, height: 'auto', maxHeight: 50 }}
+                draggable="false"
+              />
+              <p className="text-[#FBBF24] text-[11px] font-semibold mt-2 tracking-wide">
+                Powered By DMAX
+              </p>
+            </>
+          )}
         </div>
 
         {/* ── Navigation ──────────────────────────────────────────── */}
@@ -107,7 +106,6 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
               <Tooltip key={item.to}>
                 <TooltipTrigger asChild>
                   <div className="relative">
-                    {/* Gold left border on active item */}
                     {isActive && !collapsed && (
                       <span className="absolute left-0 top-[8px] bottom-[8px] w-[3px] bg-[#FBBF24] rounded-r-full" />
                     )}
@@ -144,18 +142,8 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
           })}
         </nav>
 
-        {/* ── Footer: DMAX brand + Logout ─────────────────────────── */}
-        <div className="shrink-0 border-t border-white/8 px-3 py-3 space-y-1">
-          {/* Powered by DMAX */}
-          <div className={cn('flex items-center gap-2.5 px-3 py-2 mb-1', collapsed && 'md:justify-center md:px-0')}>
-            <img src="/getmore-logo.png" alt="GETMORE" className="h-6 w-auto shrink-0 opacity-60" />
-            <div className={cn('min-w-0 overflow-hidden', collapsed && 'md:hidden')}>
-              <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest leading-none">Powered by</p>
-              <p className="text-[12px] font-bold text-white/50 leading-tight mt-0.5">GETMORE</p>
-            </div>
-          </div>
-
-          {/* Logout */}
+        {/* ── Footer: Logout ───────────────────────────────────────── */}
+        <div className="shrink-0 border-t border-white/[0.08] px-3 py-3">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
