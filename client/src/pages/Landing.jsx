@@ -131,67 +131,64 @@ function DashboardMockup() {
 /* ── Animated Hero Headline ─────────────────────────────────────────── */
 const CYCLE_WORDS = ['Customers.', 'Trust.', 'Growth.'];
 
+const GOLD = {
+  background: 'linear-gradient(135deg,#FBBF24 0%,#F59E0B 50%,#D97706 100%)',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  backgroundClip: 'text',
+};
+
 function AnimatedHeadline() {
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
-    const t = setInterval(() => setIdx(i => (i + 1) % CYCLE_WORDS.length), 2000);
+    const t = setInterval(() => setIdx(i => (i + 1) % CYCLE_WORDS.length), 2200);
     return () => clearInterval(t);
   }, []);
 
-  /* Gold gradient on "More" */
-  const Brand = ({ size }) => (
-    <span style={{ fontSize: size }}>
-      <span style={{ color: '#FFFFFF' }}>Get</span>
-      <span style={{
-        background: 'linear-gradient(135deg,#FBBF24 0%,#F59E0B 50%,#D97706 100%)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        backgroundClip: 'text',
-      }}>More</span>
-    </span>
-  );
-
   return (
-    <div className="font-sora font-black leading-[1.04] tracking-tight select-none"
-      style={{ fontSize:'clamp(44px,6vw,88px)', fontWeight:900 }}>
-
+    <div
+      className="font-sora font-black tracking-tight select-none"
+      style={{ fontWeight: 900, lineHeight: 1.06, fontSize: 'clamp(44px,6vw,88px)' }}
+    >
       {/* Line 1 — fully static */}
-      <div className="text-white whitespace-nowrap">
-        <Brand />{' '}
-        <span style={{ color:'#FFFFFF' }}>Reviews.</span>
+      <div>
+        <span style={{ color: '#fff' }}>Get</span>
+        <span style={GOLD}>More</span>
+        <span style={{ color: '#fff' }}> Reviews.</span>
       </div>
 
-      {/* Line 2 — "GetMore " fixed, only last word animates */}
-      <div className="flex items-baseline gap-[0.22em] overflow-hidden"
-        style={{ height:'1.12em' }}>
-        {/* Fixed prefix */}
-        <span className="whitespace-nowrap shrink-0">
-          <Brand />
-        </span>
-        {/* Animated word in a fixed-width clipping container */}
-        <div className="relative overflow-hidden shrink-0"
-          style={{ height:'1.12em', minWidth:'5.2ch' }}>
-          <AnimatePresence mode="popLayout" initial={false}>
+      {/* Line 2 — "GetMore" fixed, only last word cycles */}
+      <div>
+        <span style={{ color: '#fff' }}>Get</span>
+        <span style={GOLD}>More</span>
+        <span style={{ color: '#fff' }}> </span>
+        {/*
+          Clip container: overflow:hidden hides words sliding in/out.
+          mode="wait" ensures only ONE word is mounted at a time —
+          the old word fully exits before the new one enters.
+        */}
+        <span
+          style={{
+            display: 'inline-block',
+            overflow: 'hidden',
+            verticalAlign: 'bottom',
+            lineHeight: 'inherit',
+          }}
+        >
+          <AnimatePresence mode="wait" initial={false}>
             <motion.span
-              key={CYCLE_WORDS[idx]}
-              initial={{ y: '100%', opacity: 0 }}
-              animate={{ y: '0%', opacity: 1 }}
-              exit={{ y: '-100%', opacity: 0 }}
-              transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
-              className="absolute inset-0 flex items-baseline"
-              style={{
-                background: 'linear-gradient(135deg,#FBBF24 0%,#F59E0B 50%,#D97706 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                whiteSpace: 'nowrap',
-              }}
+              key={idx}
+              initial={{ y: '110%', opacity: 0 }}
+              animate={{ y: '0%',   opacity: 1 }}
+              exit={{    y: '-110%', opacity: 0 }}
+              transition={{ duration: 0.48, ease: [0.42, 0, 0.58, 1] }}
+              style={{ display: 'block', whiteSpace: 'nowrap', ...GOLD }}
             >
               {CYCLE_WORDS[idx]}
             </motion.span>
           </AnimatePresence>
-        </div>
+        </span>
       </div>
     </div>
   );
