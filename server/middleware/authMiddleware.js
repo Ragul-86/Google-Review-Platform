@@ -35,4 +35,13 @@ const protect = asyncHandler(async (req, res, next) => {
   }
 });
 
-module.exports = { protect };
+/**
+ * superAdmin — must come after protect; rejects non-superadmin roles
+ */
+const superAdmin = (req, res, next) => {
+  if (req.user && req.user.role === 'superadmin') return next();
+  res.status(403);
+  throw new Error('Access denied: Super Admin only');
+};
+
+module.exports = { protect, superAdmin };

@@ -133,4 +133,77 @@ const exportFull = asyncHandler(async (req, res) => {
   res.send(buf);
 });
 
-module.exports = { exportReviews, exportFeedback, exportFull };
+// @desc    Export all clients as XLSX
+// @route   GET /api/reports/clients
+// @access  Super Admin only
+const exportClients = asyncHandler(async (req, res) => {
+  const Customer = require('../models/Customer');
+  const clients = await Client.find().sort({ createdAt: -1 }).lean();
+
+  const sheetData = await Promise.all(clients.map(async (c) => {
+    const ReviewModel   = require('../models/Review');
+    const FeedbackModel = require('../models/Feedback');
+    const [reviews, feedback, customers] = await Promise.all([
+      ReviewModel.countDocuments({ clientId: c._id, type: 'positive' }),
+      FeedbackModel.countDocuments({ clientId: c._id }),
+      Customer.countDocuments({ clientId: c._id }),
+    ]);
+    return {
+      'Business Name':     c.businessName || '',
+      'Contact Name':      c.ownerName || '',
+      'Email':             c.email || '',
+      'Phone':             c.phone || '',
+      'Industry':          c.industryType || '',
+      'Status':            c.status || '',
+      'Onboarding Status': c.onboardingStatus || '',
+      'Total Customers':   customers,
+      'Positive Reviews':  reviews,
+      'Private Feedback':  feedback,
+      'Google Review URL': c.googleReviewUrl || '',
+      'Created At':        new Date(c.createdAt).toLocaleString(),
+    };
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(sheetData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Clients');
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  res.setHeader('Content-Disposition', `attachment; filename="clients-${Date.now()}.xlsx"`);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.send(buf);
+});
+
+// @desc    Export all customers as XLSX
+// @route   GET /api/reports/customers
+// @access  Super Admin only
+const exportCustomers = asyncHandler(async (req, res) => {
+  const Customer = require('../models/Customer');
+  const { clientId: qClientId } = req.query;
+  const query = qClientId ? { clientId: qClientId } : {};
+
+  const customers = await Customer.find(query)
+    .populate('clientId', 'businessName')
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const sheetData = customers.map((c) => ({
+    'Business':      c.clientId?.businessName || '',
+    'Name':          c.name || '',
+    'Phone':         c.phone || '',
+    'Service':       c.serviceName || '',
+    'WA Status':     c.whatsappStatus || '',
+    'Review Status': c.reviewStatus || '',
+    'Visit Date':    c.visitDate ? new Date(c.visitDate).toLocaleDateString() : '',
+    'Added At':      new Date(c.createdAt).toLocaleString(),
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(sheetData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Customers');
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  res.setHeader('Content-Disposition', `attachment; filename="customers-${Date.now()}.xlsx"`);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.send(buf);
+});
+
+module.exports = { exportReviews, exportFeedback, exportFull, exportClients, exportCustomers };

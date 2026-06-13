@@ -74,12 +74,11 @@ export const analyticsAPI = {
 
 // ─── Reports ─────────────────────────────────────────────────────────────────
 export const reportsAPI = {
-  exportReviews: (params) =>
-    API.get('/reports/reviews', { params, responseType: 'blob' }),
-  exportFeedback: (params) =>
-    API.get('/reports/feedback', { params, responseType: 'blob' }),
-  exportFull: (params) =>
-    API.get('/reports/full', { params, responseType: 'blob' }),
+  exportReviews:   (params) => API.get('/reports/reviews',   { params, responseType: 'blob' }),
+  exportFeedback:  (params) => API.get('/reports/feedback',  { params, responseType: 'blob' }),
+  exportFull:      (params) => API.get('/reports/full',      { params, responseType: 'blob' }),
+  exportClients:   (params) => API.get('/reports/clients',   { params, responseType: 'blob' }),
+  exportCustomers: (params) => API.get('/reports/customers', { params, responseType: 'blob' }),
 };
 
 // ─── Users ───────────────────────────────────────────────────────────────────
