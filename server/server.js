@@ -21,6 +21,7 @@ const reportRoutes   = require('./routes/reports');
 const customerRoutes          = require('./routes/customers');
 const whatsappTemplateRoutes  = require('./routes/whatsappTemplates');
 const serviceRoutes           = require('./routes/services');
+const contactRoutes           = require('./routes/contact');
 
 // Connect DB then auto-seed superadmin if none exists
 connectDB().then(async () => {
@@ -118,6 +119,7 @@ app.use('/api/reports',    reportRoutes);
 app.use('/api/customers',          customerRoutes);
 app.use('/api/whatsapp-templates', whatsappTemplateRoutes);
 app.use('/api/services',           serviceRoutes);
+app.use('/api/contact',            contactRoutes);
 
 // Public: Track customer review journey (called from review page — no auth needed)
 app.patch('/api/public/customer/:id/track', require('express-async-handler')(async (req, res) => {

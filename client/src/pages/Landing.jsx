@@ -178,6 +178,7 @@ function ContactForm() {
   const [form, setForm] = useState({ name: '', business: '', email: '', phone: '', message: '' });
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   function set(k) { return e => setForm(f => ({ ...f, [k]: e.target.value })); }
 
@@ -185,10 +186,22 @@ function ContactForm() {
     e.preventDefault();
     if (!form.name || !form.email) return;
     setLoading(true);
-    // Simulate submission — wire up to your backend endpoint when ready
-    await new Promise(r => setTimeout(r, 1000));
-    setLoading(false);
-    setSent(true);
+    setError('');
+    try {
+      const API = import.meta.env.VITE_API_URL || '';
+      const res = await fetch(`${API}/api/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to send');
+      setSent(true);
+    } catch (err) {
+      setError(err.message || 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   const inputStyle = {
@@ -247,6 +260,12 @@ function ContactForm() {
           onFocus={e => e.target.style.borderColor = GOLD} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
         />
       </div>
+      {/* Error */}
+      {error && (
+        <p style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#f87171', textAlign: 'center' }}>
+          {error}
+        </p>
+      )}
       {/* Submit */}
       <button type="submit" disabled={loading} style={{
         background: loading ? 'rgba(251,191,36,0.6)' : GOLD, color: DARK, fontWeight: 800, fontSize: 16,
