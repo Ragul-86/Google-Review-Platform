@@ -44,36 +44,37 @@ function Reveal({ children, delay = 0, y = 28, className = '' }) {
 /* ─── Animated Headline ──────────────────────────────────────────── */
 function AnimatedHeadline() {
   const [idx, setIdx] = useState(0);
+  const [visible, setVisible] = useState(true);
+
   useEffect(() => {
-    const t = setInterval(() => setIdx(i => (i + 1) % CYCLE_WORDS.length), 2200);
+    const t = setInterval(() => {
+      // 1. fade out current word
+      setVisible(false);
+      // 2. after fade-out completes, swap word and fade back in
+      setTimeout(() => {
+        setIdx(i => (i + 1) % CYCLE_WORDS.length);
+        setVisible(true);
+      }, 380);
+    }, 2400);
     return () => clearInterval(t);
   }, []);
+
   return (
-    <div style={{ fontWeight: 900, lineHeight: 1.1, letterSpacing: '-0.03em', fontSize: 'clamp(32px,4vw,64px)' }}>
-      {/* Line 1 — always white, never cycles, never wraps */}
-      <div style={{ color: '#fff', whiteSpace: 'nowrap' }}>GetMore Reviews.</div>
-      {/* Line 2 — "GetMore" static gold + cycling word, never wraps */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
-        <span style={{ color: GOLD }}>GetMore&nbsp;</span>
-        {/* Clip container: explicit height = lineHeight so overflow:hidden cuts entering/exiting words */}
+    <div style={{ fontWeight: 900, lineHeight: 1.12, letterSpacing: '-0.03em', fontSize: 'clamp(26px,2.8vw,54px)' }}>
+      {/* Line 1 — white, never cycles */}
+      <div style={{ color: '#fff', whiteSpace: 'nowrap' }}>
+        GetMore Reviews.
+      </div>
+      {/* Line 2 — gold, cycles one word at a time */}
+      <div style={{ color: GOLD, whiteSpace: 'nowrap' }}>
+        GetMore{' '}
         <span style={{
           display: 'inline-block',
-          overflow: 'hidden',
-          height: '1.1em',
-          verticalAlign: 'bottom',
+          opacity: visible ? 1 : 0,
+          transform: visible ? 'translateY(0px)' : 'translateY(-10px)',
+          transition: 'opacity 0.34s ease, transform 0.34s ease',
         }}>
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.span
-              key={idx}
-              initial={{ y: '110%', opacity: 0 }}
-              animate={{ y: '0%', opacity: 1 }}
-              exit={{ y: '-110%', opacity: 0 }}
-              transition={{ duration: 0.46, ease: [0.42, 0, 0.58, 1] }}
-              style={{ display: 'block', whiteSpace: 'nowrap', color: GOLD }}
-            >
-              {CYCLE_WORDS[idx]}
-            </motion.span>
-          </AnimatePresence>
+          {CYCLE_WORDS[idx]}
         </span>
       </div>
     </div>
