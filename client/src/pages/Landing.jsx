@@ -378,7 +378,7 @@ export default function Landing() {
               { icon: '📈', title: 'Improve Local SEO Rankings', desc: 'More reviews and higher ratings push you to the top of local search.' },
               { icon: '🤝', title: 'Build Customer Trust', desc: 'Social proof from real reviews converts browsing visitors into paying customers.' },
               { icon: '🛡️', title: 'Protect Online Reputation', desc: 'Private feedback intercepts unhappy customers before they post publicly.' },
-              { icon: '📊', title: 'Track Review Performance', desc: 'Real-time dashboards reveal what's working and where to improve.' },
+              { icon: '📊', title: 'Track Review Performance', desc: "Real-time dashboards reveal what's working and where to improve." },
               { icon: '🚀', title: 'Grow Business Visibility', desc: 'Dominate your local market with consistently strong Google ratings.' },
             ].map((b, i) => (
               <Reveal key={b.title} delay={i * 0.07}>
@@ -696,7 +696,7 @@ export default function Landing() {
               { icon: '🤖', title: 'AI-Powered Suggestions', desc: 'No more one-word reviews. GETMORE generates rich, detailed text that Google loves.' },
               { icon: '🛡️', title: 'Private Feedback Protection', desc: 'Prevent public negative reviews by catching unhappy customers before they post.' },
               { icon: '⚡', title: 'Simple Setup', desc: 'Connect your Google Business Profile and start collecting reviews in under 5 minutes.' },
-              { icon: '📊', title: 'Powerful Analytics', desc: 'Know exactly what's working with real-time dashboards and exportable reports.' },
+              { icon: '📊', title: 'Powerful Analytics', desc: "Know exactly what's working with real-time dashboards and exportable reports." },
               { icon: '🔧', title: 'Scalable for Growth', desc: 'Manage one location or one hundred — GETMORE scales with your business.' },
             ].map((w, i) => (
               <Reveal key={w.title} delay={i * 0.07}>
