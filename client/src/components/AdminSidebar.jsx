@@ -35,7 +35,7 @@ function GetmoreLogo({ collapsed }) {
         </div>
       ) : (
         <img
-          src="/getmore-logo.svg"
+          src="/getmore-logo.png"
           alt="GETMORE"
           className="h-12 w-auto object-contain select-none"
           draggable="false"

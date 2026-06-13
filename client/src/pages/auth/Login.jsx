@@ -69,7 +69,7 @@ export default function Login() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <img
-            src="/getmore-logo.svg"
+            src="/getmore-logo.png"
             alt="GETMORE"
             className="h-20 w-auto object-contain select-none drop-shadow-[0_0_32px_rgba(251,191,36,0.25)]"
             draggable="false"
