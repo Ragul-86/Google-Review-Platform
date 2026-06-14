@@ -140,32 +140,14 @@ export function ClientSidebar({ collapsed, mobileOpen, onClose }) {
 
         {/* Footer */}
         <div className="shrink-0 border-t border-white/[0.08] px-3 pt-3 pb-3 space-y-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div
-                className={[
-                  collapsed ? 'md:justify-center md:px-0' : '',
-                  'client-brand-block',
-                ].join(' ')}
-              >
-                <img
-                  src="/getmore-logo.png"
-                  alt="GETMORE"
-                  draggable="false"
-                  className={['client-brand-logo select-none', collapsed ? 'md:mx-auto' : ''].join(' ')}
-                />
-                <div className={['min-w-0 overflow-hidden', collapsed ? 'md:hidden' : ''].join(' ')}>
-                  <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest leading-none">Powered by</p>
-                  <p className="text-[12px] font-bold text-white/50 leading-tight mt-0.5">DMAX</p>
-                </div>
-              </div>
-            </TooltipTrigger>
-            {collapsed && (
-              <TooltipContent side="right" className="hidden md:flex text-xs bg-[#111111] text-white border-white/10">
-                Powered by DMAX
-              </TooltipContent>
-            )}
-          </Tooltip>
+          {/* Subtle "Powered by GETMORE" footer note */}
+          <div className={['client-powered-row', collapsed ? 'md:justify-center' : ''].join(' ')}>
+            <span className={['client-powered-text', collapsed ? 'md:hidden' : ''].join(' ')}>
+              Powered by <strong>GETMORE</strong>
+            </span>
+            {/* Collapsed: tiny gold dot as brand mark */}
+            <span className={['client-powered-dot', collapsed ? 'md:inline-block' : 'hidden'].join(' ')} title="Powered by GETMORE" />
+          </div>
 
           <Tooltip>
             <TooltipTrigger asChild>

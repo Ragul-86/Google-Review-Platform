@@ -87,38 +87,37 @@
   .sidebar-logo { width: 80px; }
 }
 
-/* ── Client sidebar — brand / "Powered by DMAX" block ──────────── */
-.client-brand-block {
+/* ── Client sidebar — subtle "Powered by GETMORE" footer note ───── */
+.client-powered-row {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 10px 12px 8px;
-  text-align: center;
+  padding: 6px 12px;
 }
 
-/* Width-based logo — height: auto preserves aspect ratio exactly  */
-.client-brand-logo {
-  width: 120px;
-  height: auto;
-  object-fit: contain;
-  display: block;
-  opacity: 0.70;
+.client-powered-text {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.22);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  line-height: 1;
+}
+.client-powered-text strong {
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.32);
+}
+
+/* Tiny gold dot shown only when sidebar is collapsed */
+.client-powered-dot {
+  display: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(251, 191, 36, 0.35);
   flex-shrink: 0;
 }
 
-/* Tablet 768px–1279px */
-@media (max-width: 1279px) {
-  .client-brand-logo { width: 105px; }
-}
-
-/* Mobile < 768px */
+/* Mobile < 768px — hide branding entirely to save space */
 @media (max-width: 767px) {
-  .client-brand-logo { width: 90px; }
-}
-
-/* Small mobile < 400px — hard floor */
-@media (max-width: 399px) {
-  .client-brand-logo { width: 80px; }
+  .client-powered-row { display: none; }
 }
