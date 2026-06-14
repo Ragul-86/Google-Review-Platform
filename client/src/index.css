@@ -86,3 +86,39 @@
 @media (max-width: 359px) {
   .sidebar-logo { width: 80px; }
 }
+
+/* ── Client sidebar — brand / "Powered by DMAX" block ──────────── */
+.client-brand-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px 8px;
+  text-align: center;
+}
+
+/* Width-based logo — height: auto preserves aspect ratio exactly  */
+.client-brand-logo {
+  width: 120px;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  opacity: 0.70;
+  flex-shrink: 0;
+}
+
+/* Tablet 768px–1279px */
+@media (max-width: 1279px) {
+  .client-brand-logo { width: 105px; }
+}
+
+/* Mobile < 768px */
+@media (max-width: 767px) {
+  .client-brand-logo { width: 90px; }
+}
+
+/* Small mobile < 400px — hard floor */
+@media (max-width: 399px) {
+  .client-brand-logo { width: 80px; }
+}
