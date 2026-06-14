@@ -60,13 +60,17 @@ function AnimatedHeadline() {
   }, []);
 
   return (
-    <div style={{ fontWeight: 900, lineHeight: 1.12, letterSpacing: '-0.03em', fontSize: 'clamp(26px,2.8vw,54px)' }}>
-      {/* Line 1 — white, never cycles */}
-      <div style={{ color: '#fff', whiteSpace: 'nowrap' }}>
-        GetMore Reviews.
+    <div style={{ fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1.05 }}>
+      {/* "GetMore" — white, own line, massive */}
+      <div style={{ color: '#fff', fontSize: 'clamp(52px, 7.5vw, 112px)', display: 'block' }}>
+        GetMore
       </div>
-      {/* Line 2 — gold, cycles one word at a time */}
-      <div style={{ color: GOLD, whiteSpace: 'nowrap' }}>
+      {/* "Reviews." — white, own line */}
+      <div style={{ color: '#fff', fontSize: 'clamp(52px, 7.5vw, 112px)', display: 'block', marginBottom: '0.18em' }}>
+        Reviews.
+      </div>
+      {/* Gold animated line — slightly smaller */}
+      <div style={{ color: GOLD, fontSize: 'clamp(36px, 5vw, 78px)', display: 'block' }}>
         GetMore{' '}
         <span style={{
           display: 'inline-block',
@@ -460,7 +464,13 @@ export default function Landing() {
               </h2>
             </div>
           </Reveal>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 22 }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 22,
+          }}
+            className="process-grid"
+          >
             {[
               { n: '01', title: 'Add Customer', desc: 'Capture customer name, phone number, and service provided.' },
               { n: '02', title: 'Send Review Request', desc: 'Send personalized review requests directly through WhatsApp.' },
@@ -469,17 +479,22 @@ export default function Landing() {
               { n: '05', title: 'Customer Posts Review', desc: 'One click copies the review and redirects directly to the Google Review page.' },
               { n: '06', title: 'Track Performance', desc: 'Monitor reviews, feedback, conversions, and customer activity from one dashboard.' },
             ].map((s,i) => (
-              <Reveal key={s.n} delay={i*0.09}>
-                <div style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: '30px 26px', height: '100%', transition: 'all 0.2s' }}
+              <Reveal key={s.n} delay={i*0.09} className="process-card-wrap">
+                <div
+                  className="process-card"
                   onMouseEnter={e=>{e.currentTarget.style.borderColor=`${GOLD}40`;e.currentTarget.style.transform='translateY(-3px)'}}
                   onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.06)';e.currentTarget.style.transform='none'}}
                 >
-                  <div style={{ fontSize: 52, fontWeight: 900, color: `${GOLD}1a`, lineHeight: 1, marginBottom: 14, userSelect: 'none' }}>{s.n}</div>
-                  <div style={{ width: 34, height: 34, borderRadius: 10, background: `${GOLD}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: GOLD }}>Step {s.n}</span>
+                  {/* Background step number — fixed position top-left */}
+                  <div className="process-num">{s.n}</div>
+                  {/* Step badge — fixed height, always same distance from top */}
+                  <div className="process-badge">
+                    <span>Step {s.n}</span>
                   </div>
-                  <h3 style={{ fontSize: 17, fontWeight: 700, color: '#fff', marginBottom: 10 }}>{s.title}</h3>
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.65 }}>{s.desc}</p>
+                  {/* Title — always at same vertical position */}
+                  <h3 className="process-title">{s.title}</h3>
+                  {/* Description — grows to fill remaining space */}
+                  <p className="process-desc">{s.desc}</p>
                 </div>
               </Reveal>
             ))}
@@ -844,6 +859,98 @@ export default function Landing() {
         @media(max-width:600px){
           .stats-grid{grid-template-columns:1fr!important}
           header nav{display:none!important}
+        }
+
+        /* ── Process cards ─────────────────────────────────────── */
+
+        /* Reveal wrapper must fill its grid cell */
+        .process-card-wrap {
+          height: 100%;
+        }
+
+        /* Card: flex column so description pushes to bottom uniformly */
+        .process-card {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          background: #18181b;
+          border: 1px solid rgba(255,255,255,0.06);
+          border-radius: 20px;
+          padding: 28px 26px 30px;
+          transition: border-color 0.2s, transform 0.2s;
+          overflow: hidden;
+        }
+
+        /* Large ghost number — absolute so it never pushes content */
+        .process-num {
+          position: absolute;
+          top: 20px;
+          left: 22px;
+          font-size: 72px;
+          font-weight: 900;
+          line-height: 1;
+          color: rgba(251,191,36,0.10);
+          user-select: none;
+          pointer-events: none;
+          letter-spacing: -0.04em;
+        }
+
+        /* Step badge — sits at a fixed top offset so all badges line up */
+        .process-badge {
+          position: relative;
+          z-index: 1;
+          margin-top: 72px;   /* matches ghost number height */
+          margin-bottom: 16px;
+          align-self: flex-start;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 30px;
+          padding: 0 12px;
+          border-radius: 8px;
+          background: rgba(251,191,36,0.12);
+          border: 1px solid rgba(251,191,36,0.22);
+          white-space: nowrap;
+        }
+        .process-badge span {
+          font-size: 12px;
+          font-weight: 800;
+          color: #FBBF24;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+
+        /* Title — fixed font-size, no min-height tricks needed */
+        .process-title {
+          position: relative;
+          z-index: 1;
+          font-size: 16px;
+          font-weight: 700;
+          color: #ffffff;
+          line-height: 1.3;
+          margin-bottom: 10px;
+        }
+
+        /* Description — flex-grow so all cards share the same footer */
+        .process-desc {
+          position: relative;
+          z-index: 1;
+          flex: 1;
+          font-size: 14px;
+          color: rgba(255,255,255,0.50);
+          line-height: 1.7;
+          margin: 0;
+        }
+
+        /* Responsive: 3 → 2 → 1 columns */
+        @media(max-width:960px){
+          .process-grid{ grid-template-columns: repeat(2,1fr) !important; }
+        }
+        @media(max-width:580px){
+          .process-grid{ grid-template-columns: 1fr !important; }
+          .process-num { font-size: 56px; top: 16px; left: 18px; }
+          .process-badge { margin-top: 58px; }
         }
       `}</style>
     </div>
