@@ -69,9 +69,9 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
             'shrink-0 border-b border-white/[0.08]',
             collapsed
               ? 'flex items-center justify-center py-5 px-0'
-              : 'flex flex-col px-6 pt-5 pb-4',
+              : 'flex items-center px-5',
           )}
-          style={{ minHeight: collapsed ? 72 : 90 }}
+          style={{ height: 72 }}
         >
           {collapsed ? (
             /* Collapsed: gold star icon only */
@@ -83,18 +83,12 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
               </svg>
             </div>
           ) : (
-            <>
-              <img
-                src="/getmore-logo.png"
-                alt="GETMORE"
-                className="select-none"
-                style={{ height: 40, width: 'auto', maxWidth: 160, objectFit: 'contain', display: 'block', flexShrink: 0 }}
-                draggable="false"
-              />
-              {/* <p className="text-[#FBBF24] text-[11px] font-semibold mt-2 tracking-wide">
-                Powered By DMAX
-              </p> */}
-            </>
+            <img
+              src="/getmore-logo.png"
+              alt="GETMORE"
+              draggable="false"
+              className="sidebar-logo select-none"
+            />
           )}
         </div>
 
