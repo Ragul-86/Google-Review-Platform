@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { Phone, Mail } from 'lucide-react';
 
 /* ─── Constants ─────────────────────────────────────────────────── */
 const GOLD = '#FBBF24';
@@ -777,50 +778,87 @@ export default function Landing() {
       </section>
 
       {/* ══ FOOTER ════════════════════════════════════════════════ */}
-      <footer style={{ background: '#080808', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '64px 0 32px' }}>
-        <div style={S}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 56, marginBottom: 48 }}>
-            {/* Brand */}
-            <div>
+      <footer className="ft-root">
+        <div className="ft-inner">
+
+          {/* ── Top: 4 columns ─────────────────────────────────── */}
+          <div className="ft-cols">
+
+            {/* Col 1 — Brand */}
+            <div className="ft-brand">
               <img
                 src="/getmore-logo.png"
                 alt="GETMORE"
                 draggable="false"
-                className="gm-logo-footer"
-                style={{ width: 'auto', objectFit: 'contain', display: 'block', marginBottom: 18, flexShrink: 0 }}
+                className="ft-logo"
               />
-              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.42)', lineHeight: 1.7, marginBottom: 16, maxWidth: 300 }}>
-                GetMore Reviews. GetMore Customers. GetMore Trust, GetMore Growth
+              <p className="ft-tagline">
+                GetMore Reviews. GetMore Customers.<br />
+                GetMore Trust. GetMore Growth.
               </p>
-              <p style={{ fontSize: 13, fontWeight: 700, color: GOLD }}>Powered By DMAX</p>
             </div>
-            {/* Products */}
-            <div>
-              <h4 style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 18 }}>Products</h4>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* Col 2 — Products */}
+            <div className="ft-col">
+              <h4 className="ft-heading">Products</h4>
+              <ul className="ft-list">
                 {[['Features','#features'],['Pricing','#pricing'],['Contact','#contact']].map(([l,href]) => (
-                  <li key={l}><a href={href} style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color=GOLD} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.45)'}>{l}</a></li>
+                  <li key={l}>
+                    <a href={href} className="ft-link">{l}</a>
+                  </li>
                 ))}
               </ul>
             </div>
-            {/* Support & Legal */}
-            <div>
-              <h4 style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 18 }}>Support</h4>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {['Support','Privacy Policy','Terms Of Service'].map(l => (
-                  <li key={l}><a href="#" style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color=GOLD} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.45)'}>{l}</a></li>
+
+            {/* Col 3 — Support */}
+            <div className="ft-col">
+              <h4 className="ft-heading">Support</h4>
+              <ul className="ft-list">
+                {[['Support','#'],['Privacy Policy','#'],['Terms of Service','#']].map(([l,href]) => (
+                  <li key={l}>
+                    <a href={href} className="ft-link">{l}</a>
+                  </li>
                 ))}
               </ul>
             </div>
+
+            {/* Col 4 — Contact */}
+            <div className="ft-col">
+              <h4 className="ft-heading">Contact</h4>
+              <ul className="ft-list">
+                <li>
+                  <a href="tel:+919876543210" className="ft-link ft-contact-item">
+                    <Phone size={14} className="ft-icon" />
+                    +91 98765 43210
+                  </a>
+                </li>
+                <li>
+                  <a href="mailto:dmaxworldwide@gmail.com" className="ft-link ft-contact-item">
+                    <Mail size={14} className="ft-icon" />
+                    dmaxworldwide@gmail.com
+                  </a>
+                </li>
+              </ul>
+            </div>
+
           </div>
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.28)' }}>Copyright © GETMORE. All Rights Reserved.</p>
-            <div style={{ display: 'flex', gap: 20 }}>
-              {['Privacy Policy','Terms Of Service'].map(l => (
-                <a key={l} href="#" style={{ fontSize: 13, color: 'rgba(255,255,255,0.28)', textDecoration: 'none', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color=GOLD} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.28)'}>{l}</a>
+
+          {/* ── Divider ─────────────────────────────────────────── */}
+          <div className="ft-divider" />
+
+          {/* ── Bottom bar ──────────────────────────────────────── */}
+          <div className="ft-bottom">
+            <div className="ft-bottom-left">
+              <span className="ft-copy">Copyright © GETMORE. All Rights Reserved.</span>
+              <span className="ft-powered">Powered By <span className="ft-dmax">DMAX</span></span>
+            </div>
+            <div className="ft-bottom-right">
+              {[['Privacy Policy','#'],['Terms of Service','#']].map(([l,href]) => (
+                <a key={l} href={href} className="ft-link ft-legal">{l}</a>
               ))}
             </div>
           </div>
+
         </div>
       </footer>
 
@@ -834,31 +872,268 @@ export default function Landing() {
           height: 44px;
           max-width: 180px;
         }
-        /* ── GETMORE logo — footer ── */
-        .gm-logo-footer{
-          height: 52px;
-          max-width: 220px;
-        }
         /* Tablet */
         @media(max-width:900px){
-          .gm-logo-nav   { height: 40px; max-width: 160px; }
-          .gm-logo-footer{ height: 48px; max-width: 200px; }
+          .gm-logo-nav { height: 40px; max-width: 160px; }
         }
         /* Mobile */
         @media(max-width:600px){
-          .gm-logo-nav   { height: 34px; max-width: 140px; }
-          .gm-logo-footer{ height: 42px; max-width: 180px; }
+          .gm-logo-nav { height: 34px; max-width: 140px; }
         }
 
         @media(max-width:900px){
           .hero-grid{grid-template-columns:1fr!important}
           .two-col{grid-template-columns:1fr!important}
           .stats-grid{grid-template-columns:repeat(2,1fr)!important}
-          .footer-grid{grid-template-columns:1fr!important}
         }
         @media(max-width:600px){
           .stats-grid{grid-template-columns:1fr!important}
           header nav{display:none!important}
+        }
+
+        /* ════════════════════════════════════════════════════════
+           FOOTER
+        ════════════════════════════════════════════════════════ */
+
+        /* Outer shell */
+        .ft-root {
+          background: #080808;
+          border-top: 1px solid rgba(255,255,255,0.07);
+        }
+
+        /* Centred container — max 1280px, equal horizontal padding */
+        .ft-inner {
+          max-width: 1280px;
+          margin: 0 auto;
+          padding: 72px 48px 36px;
+        }
+
+        /* ── 4-column grid ── */
+        .ft-cols {
+          display: grid;
+          grid-template-columns: 1.8fr 1fr 1fr 1.4fr;
+          gap: 48px;
+          align-items: start;
+          margin-bottom: 56px;
+        }
+
+        /* ── Brand column ── */
+        .ft-brand {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        /* Logo — width-based sizing, aspect ratio preserved */
+        .ft-logo {
+          width: 150px;
+          height: auto;
+          object-fit: contain;
+          display: block;
+          margin-bottom: 24px;
+          flex-shrink: 0;
+        }
+
+        /* Tagline */
+        .ft-tagline {
+          font-size: 14px;
+          line-height: 1.75;
+          color: rgba(255,255,255,0.42);
+          margin: 0;
+        }
+
+        /* ── Link columns ── */
+        .ft-col {
+          display: flex;
+          flex-direction: column;
+        }
+
+        /* Column heading */
+        .ft-heading {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.11em;
+          text-transform: uppercase;
+          color: rgba(255,255,255,0.35);
+          margin: 0 0 20px 0;
+          padding: 0;
+          line-height: 1;
+        }
+
+        /* Link list */
+        .ft-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 13px;
+        }
+
+        /* Individual link */
+        .ft-link {
+          font-size: 14px;
+          color: rgba(255,255,255,0.48);
+          text-decoration: none;
+          transition: color 0.18s;
+          display: inline-flex;
+          align-items: center;
+        }
+        .ft-link:hover { color: #FBBF24; }
+
+        /* Contact row — icon + text */
+        .ft-contact-item {
+          gap: 9px;
+        }
+        .ft-icon {
+          flex-shrink: 0;
+          opacity: 0.65;
+          transition: opacity 0.18s;
+        }
+        .ft-link:hover .ft-icon { opacity: 1; }
+
+        /* ── Divider ── */
+        .ft-divider {
+          border: none;
+          border-top: 1px solid rgba(255,255,255,0.07);
+          margin-bottom: 28px;
+        }
+
+        /* ── Bottom bar ── */
+        .ft-bottom {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+
+        .ft-bottom-left {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+          flex-wrap: wrap;
+        }
+
+        .ft-copy {
+          font-size: 13px;
+          color: rgba(255,255,255,0.26);
+        }
+
+        .ft-powered {
+          font-size: 13px;
+          color: rgba(255,255,255,0.26);
+        }
+
+        .ft-dmax {
+          color: #FBBF24;
+          font-weight: 700;
+        }
+
+        .ft-bottom-right {
+          display: flex;
+          align-items: center;
+          gap: 24px;
+        }
+
+        .ft-legal {
+          font-size: 13px;
+          color: rgba(255,255,255,0.26);
+        }
+        .ft-legal:hover { color: #FBBF24; }
+
+        /* ────────────────────────────────────────────────────────
+           TABLET  768px – 1024px  →  2×2 grid
+        ──────────────────────────────────────────────────────── */
+        @media (max-width: 1024px) {
+          .ft-inner {
+            padding: 60px 32px 32px;
+          }
+          .ft-cols {
+            grid-template-columns: 1fr 1fr;
+            gap: 40px 48px;
+          }
+          .ft-logo {
+            width: 130px;
+          }
+          .ft-brand {
+            grid-column: 1 / -1;        /* brand spans full width on tablet */
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 40px;
+            flex-wrap: wrap;
+          }
+          .ft-tagline {
+            max-width: 360px;
+            margin: 0;
+            padding-top: 4px;
+          }
+        }
+
+        /* ────────────────────────────────────────────────────────
+           MOBILE  < 768px  →  single column, centred
+        ──────────────────────────────────────────────────────── */
+        @media (max-width: 767px) {
+          .ft-inner {
+            padding: 52px 24px 28px;
+          }
+
+          .ft-cols {
+            grid-template-columns: 1fr;
+            gap: 36px;
+            margin-bottom: 44px;
+          }
+
+          /* Brand: centred on mobile */
+          .ft-brand {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            grid-column: auto;
+            gap: 0;
+          }
+
+          .ft-logo {
+            width: 115px;
+            margin-bottom: 20px;
+          }
+
+          .ft-tagline {
+            max-width: 280px;
+            text-align: center;
+          }
+
+          /* Link columns: centred */
+          .ft-col {
+            align-items: center;
+            text-align: center;
+          }
+
+          .ft-list {
+            align-items: center;
+          }
+
+          /* Contact items centred */
+          .ft-contact-item {
+            justify-content: center;
+          }
+
+          /* Bottom bar: stacked, centred */
+          .ft-bottom {
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+          }
+
+          .ft-bottom-left {
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .ft-bottom-right {
+            gap: 20px;
+          }
         }
 
         /* ── Process cards ─────────────────────────────────────── */

@@ -91,9 +91,9 @@ export function AdminSidebar({ collapsed, mobileOpen, onClose }) {
                 style={{ height: 40, width: 'auto', maxWidth: 160, objectFit: 'contain', display: 'block', flexShrink: 0 }}
                 draggable="false"
               />
-              <p className="text-[#FBBF24] text-[11px] font-semibold mt-2 tracking-wide">
+              {/* <p className="text-[#FBBF24] text-[11px] font-semibold mt-2 tracking-wide">
                 Powered By DMAX
-              </p>
+              </p> */}
             </>
           )}
         </div>
