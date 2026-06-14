@@ -89,7 +89,7 @@ function AnimatedHeadline() {
 /* ─── Dashboard Mockup ───────────────────────────────────────────── */
 function DashboardMockup() {
   return (
-    <div style={{ position: 'relative', padding: '0 12px' }}>
+    <div style={{ position: 'relative', padding: '0 12px' }} className="dash-mockup-wrap">
       <div style={{
         position: 'absolute', inset: -40, borderRadius: 32,
         background: `radial-gradient(ellipse 70% 60% at 50% 50%,${GOLD}1a 0%,transparent 70%)`,
@@ -227,8 +227,8 @@ function ContactForm() {
   );
 
   return (
-    <form onSubmit={handleSubmit} style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 24, padding: '40px 36px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+    <form onSubmit={handleSubmit} className="contact-form">
+      <div className="contact-form-grid">
         {/* Name */}
         <div>
           <label style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Full Name *</label>
@@ -357,13 +357,13 @@ export default function Landing() {
       </header>
 
       {/* ══ HERO ════════════════════════════════════════════════════ */}
-      <section style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', padding: '120px 0 80px', position: 'relative', overflow: 'hidden', background: 'linear-gradient(150deg,#111 0%,#161616 55%,#111 100%)' }}>
+      <section className="hero-section" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', padding: '120px 0 80px', position: 'relative', overflow: 'hidden', background: 'linear-gradient(150deg,#111 0%,#161616 55%,#111 100%)' }}>
         {/* Ambient glows */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <div style={{ position: 'absolute', top: '-15%', left: '35%', width: 720, height: 720, borderRadius: '50%', background: `${GOLD}09`, filter: 'blur(90px)' }} />
           <div style={{ position: 'absolute', bottom: '-5%', right: '5%', width: 480, height: 480, borderRadius: '50%', background: `${GOLD}06`, filter: 'blur(70px)' }} />
         </div>
-        <div style={{ ...S, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center', width: '100%', position: 'relative' }}>
+        <div style={{ ...S, width: '100%', position: 'relative' }} className="hero-grid-wrap">
           {/* Left */}
           <motion.div initial={{ opacity: 0, y: 36 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22,1,0.36,1] }}>
             <div style={{ marginBottom: 24 }}>
@@ -398,7 +398,7 @@ export default function Landing() {
 
       {/* ══ STATS STRIP ════════════════════════════════════════════ */}
       <section style={{ background: '#0c0c0c', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '40px 0' }}>
-        <div style={{ ...S, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+        <div style={{ ...S }} className="stats-grid">
           {[
             { v: '10,000+', l: 'Businesses Worldwide' },
             { v: '2.4M+', l: 'Reviews Collected' },
@@ -580,7 +580,7 @@ export default function Landing() {
       {/* ══ PRIVATE FEEDBACK PROTECTION ═══════════════════════════ */}
       <Div /><section style={{ ...SEC }}>
         <div style={S}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center' }}>
+          <div className="two-col-grid">
             <Reveal>
               <Label>🛡️ Reputation Protection</Label>
               <h2 style={{ fontSize: 'clamp(24px,3vw,42px)', fontWeight: 900, marginTop: 18, letterSpacing: '-0.025em', lineHeight: 1.15 }}>
@@ -738,7 +738,7 @@ export default function Landing() {
       <Div /><section style={{ ...SEC }}>
         <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 24px', textAlign: 'center' }}>
           <Reveal>
-            <div style={{ background: `linear-gradient(135deg,${GOLD}10 0%,${GOLD}05 100%)`, border: `1px solid ${GOLD}2a`, borderRadius: 28, padding: '72px 40px' }}>
+            <div className="cta-box" style={{ background: `linear-gradient(135deg,${GOLD}10 0%,${GOLD}05 100%)`, border: `1px solid ${GOLD}2a`, borderRadius: 28, padding: '72px 40px' }}>
               <Label>Get Started Today</Label>
               <h2 style={{ fontSize: 'clamp(26px,4vw,52px)', fontWeight: 900, marginTop: 20, letterSpacing: '-0.025em' }}>
                 Ready To <span style={{ color: GOLD }}>GetMore Reviews?</span>
@@ -1012,15 +1012,114 @@ export default function Landing() {
           .hdr-demo   { padding: 9px 14px; }
         }
 
-        /* ── Other section responsiveness ── */
-        @media(max-width:900px){
-          .hero-grid{grid-template-columns:1fr!important}
-          .two-col{grid-template-columns:1fr!important}
-          .stats-grid{grid-template-columns:repeat(2,1fr)!important}
+        /* ════════════════════════════════════════════════════════
+           SECTION RESPONSIVE FIXES
+           Desktop unchanged. Only tablet/mobile overrides here.
+        ════════════════════════════════════════════════════════ */
+
+        /* ── Hero grid wrapper ── */
+        .hero-grid-wrap {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 64px;
+          align-items: center;
         }
-        @media(max-width:600px){
-          .stats-grid{grid-template-columns:1fr!important}
+
+        /* ── Stats strip ── */
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 16px;
         }
+
+        /* ── Private feedback 2-col ── */
+        .two-col-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 64px;
+          align-items: center;
+        }
+
+        /* ── Contact form ── */
+        .contact-form {
+          background: #18181b;
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 24px;
+          padding: 40px 36px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .contact-form-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+
+        /* ════════════════════════════════════════════════════════
+           TABLET  768px – 1024px
+        ════════════════════════════════════════════════════════ */
+        @media (max-width: 1024px) {
+          /* Hero: stack vertically, dashboard below */
+          .hero-section { padding: 110px 0 64px !important; }
+          .hero-grid-wrap {
+            grid-template-columns: 1fr;
+            gap: 48px;
+          }
+          /* Stats: 2 per row */
+          .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+          /* Reputation section: stack */
+          .two-col-grid { grid-template-columns: 1fr; gap: 40px; }
+          /* Dashboard mockup: constrain width when stacked */
+          .dash-mockup-wrap { max-width: 520px; margin: 0 auto; }
+        }
+
+        /* ════════════════════════════════════════════════════════
+           MOBILE  < 768px
+        ════════════════════════════════════════════════════════ */
+        @media (max-width: 767px) {
+          /* Section vertical padding — excluding hero which controls its own */
+          section:not(.hero-section) { padding-top: 64px !important; padding-bottom: 64px !important; }
+          /* Hero mobile: reduce top padding so content clears the 64px navbar */
+          .hero-section { padding: 96px 0 56px !important; }
+
+          /* Hero */
+          .hero-grid-wrap { grid-template-columns: 1fr; gap: 40px; }
+
+          /* Stats: 2 per row on 425+, 1 per row on 375- */
+          .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+          /* Reputation */
+          .two-col-grid { grid-template-columns: 1fr; gap: 32px; }
+
+          /* Contact form: full padding reduction */
+          .contact-form { padding: 28px 20px; }
+          .contact-form-grid { grid-template-columns: 1fr; }
+
+          /* Dashboard: full width, no badges overflow */
+          .dash-mockup-wrap { max-width: 100%; padding: 0; }
+        }
+
+        /* ════════════════════════════════════════════════════════
+           SMALL MOBILE  < 480px
+        ════════════════════════════════════════════════════════ */
+        @media (max-width: 480px) {
+          /* Stats: single column */
+          .stats-grid { grid-template-columns: 1fr; }
+
+          /* Tighten section padding */
+          section:not(.hero-section) { padding-top: 52px !important; padding-bottom: 52px !important; }
+          .hero-section { padding: 88px 0 48px !important; }
+
+          /* Contact form full bleed */
+          .contact-form { padding: 24px 16px; border-radius: 18px; }
+
+          /* Final CTA box */
+          .cta-box { padding: 48px 24px !important; }
+        }
+
+        /* Prevent any horizontal overflow globally */
+        img { max-width: 100%; height: auto; }
 
         /* ════════════════════════════════════════════════════════
            FOOTER
