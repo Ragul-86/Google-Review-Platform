@@ -68,13 +68,14 @@ export default function Login() {
       <div className="w-full max-w-md relative">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <img
-            src="/getmore-logo.png"
-            alt="GETMORE"
-            draggable="false"
-            className="select-none drop-shadow-[0_0_32px_rgba(251,191,36,0.25)]"
-            style={{ height: 52, width: 'auto', maxWidth: 200, objectFit: 'contain', display: 'block' }}
-          />
+          <div className="login-logo-wrap">
+            <img
+              src="/getmore-logo.png"
+              alt="GETMORE"
+              draggable="false"
+              className="login-logo select-none"
+            />
+          </div>
           {/* <p className="text-white/30 text-[11px] mt-3">Powered by DMAX</p> */}
         </div>
 

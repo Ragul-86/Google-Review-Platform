@@ -62,6 +62,50 @@
 ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
 
+/* ── Login page logo ────────────────────────────────────────────── */
+.login-logo-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Soft ambient glow behind logo only */
+.login-logo-wrap::after {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(ellipse at center, rgba(251, 191, 36, 0.18) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.login-logo {
+  position: relative;
+  z-index: 1;
+  width: 130px;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  opacity: 1;
+  filter: drop-shadow(0 0 24px rgba(251, 191, 36, 0.22));
+}
+
+/* Tablet 768px–1279px */
+@media (max-width: 1279px) {
+  .login-logo { width: 110px; }
+}
+
+/* Mobile < 768px */
+@media (max-width: 767px) {
+  .login-logo { width: 90px; }
+}
+
+/* Small mobile < 400px */
+@media (max-width: 399px) {
+  .login-logo { width: 75px; }
+}
+
 /* ── Admin sidebar logo ─────────────────────────────────────────── */
 /* Width-based so aspect ratio is always preserved (height: auto)   */
 .sidebar-logo {
