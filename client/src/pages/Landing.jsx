@@ -323,36 +323,36 @@ export default function Landing() {
     <div style={{ background: DARK, color: '#fff', fontFamily: "'Inter',system-ui,sans-serif", overflowX: 'hidden' }}>
 
       {/* ══ NAVBAR ══════════════════════════════════════════════════ */}
-      <header style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, height: 72,
-        background: scrolled ? 'rgba(17,17,17,0.95)' : 'transparent',
-        backdropFilter: scrolled ? 'blur(16px)' : 'none',
-        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.06)' : 'none',
-        transition: 'all 0.3s ease',
-      }}>
-        <div style={{ ...S, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <img
-            src="/getmore-logo.png"
-            alt="GETMORE"
-            draggable="false"
-            className="gm-logo-nav"
-            style={{ width: 'auto', objectFit: 'contain', display: 'block', flexShrink: 0 }}
-          />
-          <nav style={{ display: 'flex', gap: 32 }}>
+      <header className={`hdr-root${scrolled ? ' hdr-scrolled' : ''}`}>
+        <div className="hdr-inner">
+
+          {/* Logo — far left, width-based so aspect ratio is always preserved */}
+          <Link to="/" className="hdr-logo-wrap" tabIndex={0} aria-label="GETMORE home">
+            <img
+              src="/getmore-logo.png"
+              alt="GETMORE"
+              draggable="false"
+              className="hdr-logo"
+            />
+          </Link>
+
+          {/* Centre nav — hidden on mobile */}
+          <nav className="hdr-nav" aria-label="Site navigation">
             {['Features','How It Works','Pricing','Contact'].map(l => (
-              <a key={l} href={l === 'Contact' ? '#contact' : `#${l.toLowerCase().replace(/\s+/g,'-')}`}
-                style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.6)', textDecoration: 'none', transition: 'color 0.2s' }}
-                onMouseEnter={e=>e.target.style.color=GOLD} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.6)'}
+              <a
+                key={l}
+                href={l === 'Contact' ? '#contact' : `#${l.toLowerCase().replace(/\s+/g,'-')}`}
+                className="hdr-nav-link"
               >{l}</a>
             ))}
           </nav>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <Link to="/login" style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.75)', textDecoration: 'none', padding: '8px 14px' }}>Sign In</Link>
-            <a href="#contact" style={{ fontSize: 14, fontWeight: 700, color: DARK, background: GOLD, padding: '10px 22px', borderRadius: 10, textDecoration: 'none', transition: 'opacity 0.2s, transform 0.2s' }}
-              onMouseEnter={e=>{e.currentTarget.style.opacity='0.88';e.currentTarget.style.transform='translateY(-1px)'}}
-              onMouseLeave={e=>{e.currentTarget.style.opacity='1';e.currentTarget.style.transform='none'}}
-            >Book a Demo</a>
+
+          {/* Right CTA */}
+          <div className="hdr-cta">
+            <Link to="/login" className="hdr-signin">Sign In</Link>
+            <a href="#contact" className="hdr-demo">Book a Demo</a>
           </div>
+
         </div>
       </header>
 
@@ -867,20 +867,152 @@ export default function Landing() {
         html{scroll-behavior:smooth}
         *{box-sizing:border-box;margin:0;padding:0}
 
-        /* ── GETMORE logo — navbar ── */
-        .gm-logo-nav{
-          height: 44px;
-          max-width: 180px;
+        /* ════════════════════════════════════════════════════════
+           NAVBAR
+        ════════════════════════════════════════════════════════ */
+
+        /* Fixed shell */
+        .hdr-root {
+          position: fixed;
+          top: 0; left: 0; right: 0;
+          z-index: 100;
+          height: 72px;
+          background: transparent;
+          border-bottom: 1px solid transparent;
+          transition: background 0.3s ease, border-color 0.3s ease, backdrop-filter 0.3s ease;
         }
-        /* Tablet */
-        @media(max-width:900px){
-          .gm-logo-nav { height: 40px; max-width: 160px; }
-        }
-        /* Mobile */
-        @media(max-width:600px){
-          .gm-logo-nav { height: 34px; max-width: 140px; }
+        .hdr-root.hdr-scrolled {
+          background: rgba(17,17,17,0.95);
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+          border-color: rgba(255,255,255,0.07);
         }
 
+        /* Inner container — max-width centred, equal horizontal padding */
+        .hdr-inner {
+          max-width: 1280px;
+          height: 100%;
+          margin: 0 auto;
+          padding: 0 48px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 32px;
+        }
+
+        /* ── Logo wrap ── */
+        .hdr-logo-wrap {
+          display: flex;
+          align-items: center;
+          flex-shrink: 0;
+          text-decoration: none;
+          outline-offset: 4px;
+        }
+
+        /* Width-based logo — height: auto preserves aspect ratio exactly */
+        .hdr-logo {
+          width: 130px;
+          height: auto;
+          object-fit: contain;
+          display: block;
+        }
+
+        /* ── Centre nav ── */
+        .hdr-nav {
+          display: flex;
+          align-items: center;
+          gap: 32px;
+          flex: 1;
+          justify-content: center;
+        }
+
+        .hdr-nav-link {
+          font-size: 14px;
+          font-weight: 500;
+          color: rgba(255,255,255,0.60);
+          text-decoration: none;
+          white-space: nowrap;
+          transition: color 0.18s;
+        }
+        .hdr-nav-link:hover { color: #FBBF24; }
+
+        /* ── Right CTA group ── */
+        .hdr-cta {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-shrink: 0;
+        }
+
+        /* Sign In text link */
+        .hdr-signin {
+          font-size: 14px;
+          font-weight: 600;
+          color: rgba(255,255,255,0.72);
+          text-decoration: none;
+          padding: 8px 14px;
+          border-radius: 8px;
+          white-space: nowrap;
+          transition: color 0.18s, background 0.18s;
+        }
+        .hdr-signin:hover {
+          color: #fff;
+          background: rgba(255,255,255,0.06);
+        }
+
+        /* Book a Demo CTA */
+        .hdr-demo {
+          font-size: 14px;
+          font-weight: 700;
+          color: #111111;
+          background: #FBBF24;
+          padding: 10px 22px;
+          border-radius: 10px;
+          text-decoration: none;
+          white-space: nowrap;
+          transition: opacity 0.18s, transform 0.18s, box-shadow 0.18s;
+          box-shadow: 0 4px 14px rgba(251,191,36,0.30);
+        }
+        .hdr-demo:hover {
+          opacity: 0.9;
+          transform: translateY(-1px);
+          box-shadow: 0 8px 22px rgba(251,191,36,0.40);
+        }
+
+        /* ── Tablet  768px – 1024px ── */
+        @media (max-width: 1024px) {
+          .hdr-inner {
+            padding: 0 32px;
+            gap: 20px;
+          }
+          .hdr-logo { width: 110px; }
+          .hdr-nav  { gap: 24px; }
+          .hdr-nav-link { font-size: 13px; }
+        }
+
+        /* ── Mobile  < 768px ── */
+        @media (max-width: 767px) {
+          .hdr-root  { height: 64px; }
+          .hdr-inner { padding: 0 20px; gap: 12px; }
+          .hdr-logo  { width: 90px; }
+
+          /* Hide nav links — no hamburger in this design */
+          .hdr-nav   { display: none; }
+
+          /* Keep just Sign In + Demo on mobile */
+          .hdr-signin { padding: 7px 10px; font-size: 13px; }
+          .hdr-demo   { padding: 9px 16px; font-size: 13px; }
+        }
+
+        /* ── Small mobile  < 400px ── */
+        @media (max-width: 399px) {
+          .hdr-logo  { width: 80px; }
+          /* Hide Sign In on very small screens — just the CTA */
+          .hdr-signin { display: none; }
+          .hdr-demo   { padding: 9px 14px; }
+        }
+
+        /* ── Other section responsiveness ── */
         @media(max-width:900px){
           .hero-grid{grid-template-columns:1fr!important}
           .two-col{grid-template-columns:1fr!important}
@@ -888,7 +1020,6 @@ export default function Landing() {
         }
         @media(max-width:600px){
           .stats-grid{grid-template-columns:1fr!important}
-          header nav{display:none!important}
         }
 
         /* ════════════════════════════════════════════════════════
