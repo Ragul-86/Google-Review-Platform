@@ -87,37 +87,57 @@
   .sidebar-logo { width: 80px; }
 }
 
-/* ── Client sidebar — subtle "Powered by GETMORE" footer note ───── */
-.client-powered-row {
+/* ── Client sidebar — compact logo + "Powered by DMAX" signature ── */
+.client-powered-block {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 6px 12px;
+  gap: 6px;
+  padding: 8px 12px 6px;
+  text-align: center;
 }
 
-.client-powered-text {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.22);
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-  line-height: 1;
-}
-.client-powered-text strong {
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.32);
-}
-
-/* Tiny gold dot shown only when sidebar is collapsed */
-.client-powered-dot {
-  display: none;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(251, 191, 36, 0.35);
+.client-powered-logo {
+  width: 80px;
+  height: auto;
+  object-fit: contain;
+  display: block;
   flex-shrink: 0;
+  opacity: 1;
 }
 
-/* Mobile < 768px — hide branding entirely to save space */
+.client-powered-text-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.client-powered-by {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.28);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  margin: 0;
+}
+
+.client-powered-dmax {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.50);
+  line-height: 1.3;
+  margin: 0;
+}
+
+/* Tablet */
+@media (max-width: 1279px) {
+  .client-powered-logo { width: 68px; }
+}
+
+/* Mobile — hide to save space */
 @media (max-width: 767px) {
-  .client-powered-row { display: none; }
+  .client-powered-block { display: none; }
 }
