@@ -193,8 +193,8 @@ function ContactForm() {
     setLoading(true);
     setError('');
     try {
-      const API = import.meta.env.VITE_API_URL || '';
-      const res = await fetch(`${API}/api/contact`, {
+      const API = import.meta.env.VITE_API_URL || '/api';
+      const res = await fetch(`${API}/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
