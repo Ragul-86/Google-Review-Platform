@@ -16,10 +16,21 @@ exports.submitContact = async (req, res) => {
     /* 1 ── Save to MongoDB */
     const doc = await ContactMessage.create({ name, business, email, phone, message });
 
-    /* 2 ── Email notification to DMAX / admin */
+    /* 2 ── Respond immediately — don't block on emails */
+    const waNumber = process.env.CONTACT_WHATSAPP_NUMBER || '';
+    const waText   = encodeURIComponent(`New demo request from ${name}${business ? ` (${business})` : ''}. Email: ${email}. Phone: ${phone || 'N/A'}. Message: ${message || 'N/A'}`);
+    const waLink   = waNumber ? `https://wa.me/${waNumber.replace(/\D/g,'')}?text=${waText}` : null;
+
+    res.status(201).json({
+      message: 'Message received! We will contact you within 24 hours.',
+      id: doc._id,
+      whatsappLink: waLink,
+    });
+
+    /* 3 ── Fire-and-forget: email notification to admin */
     const adminEmail = process.env.CONTACT_NOTIFY_EMAIL || process.env.EMAIL_USER;
     if (adminEmail) {
-      await sendEmail({
+      sendEmail({
         to: adminEmail,
         subject: `📩 New Demo Request — ${name}${business ? ` (${business})` : ''}`,
         html: `
@@ -54,11 +65,11 @@ exports.submitContact = async (req, res) => {
             </div>
           </div>
         `,
-      });
+      }).catch((e) => console.error('Admin email failed:', e.message));
     }
 
-    /* 3 ── Auto-reply to the sender */
-    await sendEmail({
+    /* 4 ── Fire-and-forget: auto-reply to sender */
+    sendEmail({
       to: email,
       subject: 'Thank you for contacting GETMORE! 🎉',
       html: `
@@ -81,18 +92,9 @@ exports.submitContact = async (req, res) => {
           </div>
         </div>
       `,
-    });
+    }).catch((e) => console.error('Auto-reply email failed:', e.message));
 
-    /* 4 ── Return WhatsApp link for frontend (optional direct open) */
-    const waNumber = process.env.CONTACT_WHATSAPP_NUMBER || '';
-    const waText   = encodeURIComponent(`New demo request from ${name}${business ? ` (${business})` : ''}. Email: ${email}. Phone: ${phone || 'N/A'}. Message: ${message || 'N/A'}`);
-    const waLink   = waNumber ? `https://wa.me/${waNumber.replace(/\D/g,'')}?text=${waText}` : null;
-
-    res.status(201).json({
-      message: 'Message received! We will contact you within 24 hours.',
-      id: doc._id,
-      whatsappLink: waLink,
-    });
+    /* response already sent above — emails fire in background */
   } catch (err) {
     console.error('Contact submit error:', err);
     res.status(500).json({ message: 'Failed to send message. Please try again.' });

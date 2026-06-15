@@ -9,6 +9,9 @@ const createTransporter = () => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    connectionTimeout: 8000,   // 8s — fail fast if SMTP unreachable
+    greetingTimeout:  8000,
+    socketTimeout:    10000,
   });
 };
 
