@@ -1,37 +1,28 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT) || 587,
-    secure: false,
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-    connectionTimeout: 8000,   // 8s — fail fast if SMTP unreachable
-    greetingTimeout:  8000,
-    socketTimeout:    10000,
-  });
-};
+const getResend = () => new Resend(process.env.RESEND_API_KEY);
 
 /**
- * Send generic email
+ * Send generic email via Resend
  */
 const sendEmail = async ({ to, subject, html, text }) => {
   try {
-    const transporter = createTransporter();
-    const info = await transporter.sendMail({
-      from: process.env.EMAIL_FROM || 'noreply@platform.com',
+    const resend = getResend();
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'GETMORE <onboarding@resend.dev>',
       to,
       subject,
       html,
       text,
     });
-    return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error('Email send error:', error.message);
-    return { success: false, error: error.message };
+    if (error) {
+      console.error('Resend error:', error);
+      return { success: false, error: error.message };
+    }
+    return { success: true, messageId: data?.id };
+  } catch (err) {
+    console.error('Email send error:', err.message);
+    return { success: false, error: err.message };
   }
 };
 
@@ -53,7 +44,7 @@ const sendFeedbackNotification = async ({ clientEmail, clientName, feedbackData 
         <p style="color: #374151;">${feedbackData.feedback}</p>
       </div>
       <p>Please log in to your dashboard to respond.</p>
-      <p style="color: #6b7280; font-size: 12px;">Google Review Platform</p>
+      <p style="color: #6b7280; font-size: 12px;">GETMORE — Powered by DMAX</p>
     </div>
   `;
 
@@ -71,7 +62,7 @@ const sendFeedbackNotification = async ({ clientEmail, clientName, feedbackData 
 const sendWelcomeEmail = async ({ to, name, email, tempPassword, loginUrl }) => {
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #2563eb;">Welcome to Google Review Platform!</h2>
+      <h2 style="color: #FBBF24;">Welcome to GETMORE!</h2>
       <p>Hi ${name},</p>
       <p>Your account has been created. Here are your login credentials:</p>
       <div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin: 16px 0;">
@@ -79,14 +70,14 @@ const sendWelcomeEmail = async ({ to, name, email, tempPassword, loginUrl }) => 
         <p><strong>Temporary Password:</strong> <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px;">${tempPassword}</code></p>
       </div>
       <p>Please change your password after first login.</p>
-      <a href="${loginUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none;">Login Now</a>
-      <p style="color: #6b7280; font-size: 12px; margin-top: 24px;">Google Review Platform</p>
+      <a href="${loginUrl}" style="display: inline-block; background: #FBBF24; color: #111; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: bold;">Login Now</a>
+      <p style="color: #6b7280; font-size: 12px; margin-top: 24px;">GETMORE — Powered by DMAX</p>
     </div>
   `;
 
   return sendEmail({
     to,
-    subject: 'Welcome — Your Google Review Platform Account',
+    subject: 'Welcome — Your GETMORE Account',
     html,
     text: `Welcome ${name}! Email: ${email}, Password: ${tempPassword}`,
   });
