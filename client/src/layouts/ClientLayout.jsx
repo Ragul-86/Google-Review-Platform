@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { ClientSidebar } from '@/components/ClientSidebar';
 import { useAuth } from '@/context/AuthContext';
+import { useIdleLogout } from '@/hooks/useIdleLogout';
 import { Menu } from 'lucide-react';
 
 export function ClientLayout() {
@@ -9,6 +10,9 @@ export function ClientLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user } = useAuth();
   const client = user?.client;
+
+  // Auto-logout after 15 min of inactivity (warns 60s before)
+  useIdleLogout(15, 60);
 
   function handleMenuToggle() {
     if (window.innerWidth < 768) setMobileOpen((o) => !o);

@@ -230,6 +230,7 @@ export default function ReviewPage() {
       await reviewsAPI.submit({
         clientSlug: slug, rating, type: 'negative',
         customerName: name, customerPhone: contact,
+        serviceLabel: selectedService?.name || '',
         message, qrToken,
       });
       if (customerId) publicAPI.trackCustomer(customerId, 'feedback_submitted').catch(() => {});
@@ -467,6 +468,25 @@ export default function ReviewPage() {
               <form onSubmit={handleNegativeSubmit} className="space-y-3">
                 <div><Label>Name</Label><Input required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} /></div>
                 <div><Label>Contact number</Label><Input required maxLength={60} value={contact} onChange={(e) => setContact(e.target.value)} /></div>
+                {activeServices.length > 0 && (
+                  <div>
+                    <Label>Which service did you use?</Label>
+                    <select
+                      required
+                      value={selectedService?._id || ''}
+                      onChange={(e) => {
+                        const svc = activeServices.find((s) => s._id === e.target.value);
+                        setSelectedService(svc || null);
+                      }}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <option value="" disabled>Select a service</option>
+                      {activeServices.map((svc) => (
+                        <option key={svc._id} value={svc._id}>{svc.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div><Label>What went wrong?</Label><Textarea required rows={4} maxLength={2000} value={message} onChange={(e) => setMessage(e.target.value)} /></div>
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending…</> : 'Send feedback'}
