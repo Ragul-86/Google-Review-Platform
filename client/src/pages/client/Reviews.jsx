@@ -427,10 +427,9 @@ export default function ClientReviews() {
                         )}
                       </div>
                       {/* Contact info */}
-                      {(fb.email || fb.phone) && (
+                      {fb.phone && (
                         <p className="text-xs text-gray-400">
-                          {fb.phone && <span className="mr-2">📞 {fb.phone}</span>}
-                          {fb.email && <span>✉ {fb.email}</span>}
+                          <span>📞 {fb.phone}</span>
                         </p>
                       )}
                       {/* Message */}
