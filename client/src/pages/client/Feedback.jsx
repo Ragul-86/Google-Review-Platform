@@ -18,10 +18,12 @@ function sendReviewRequest(f, client) {
   if (!phone) { toast.error('No phone number on file for this customer'); return; }
 
   const reviewLink = `${window.location.origin}/review/${client?.slug || ''}?retry=1`;
-  const name = f.customerName || 'there';
-  const biz  = client?.businessName || 'our team';
+  const name    = f.customerName || 'there';
+  const biz     = client?.businessName || 'our team';
+  // *text* renders bold on WhatsApp — highlight the service the feedback was about
+  const service = f.categoryLabel ? ` regarding your *${f.categoryLabel}*` : '';
 
-  const msg = `Hi ${name}! 👋\n\nThank you for your patience — we've resolved the issue you raised with us. We'd really appreciate it if you could share your updated experience with a quick review:\n\n👉 ${reviewLink}\n\nThank you so much! 🙏\n*${biz}*`;
+  const msg = `Hi ${name}! 👋\n\nThank you for your patience — we've resolved the issue you raised${service}. We'd really appreciate it if you could share your updated experience with a quick review:\n\n👉 ${reviewLink}\n\nThank you so much! 🙏\n*${biz}*`;
 
   window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
 }
