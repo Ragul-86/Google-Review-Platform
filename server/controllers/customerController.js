@@ -1,6 +1,8 @@
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const Customer = require('../models/Customer');
+const Review = require('../models/Review');
+const Feedback = require('../models/Feedback');
 
 /* ── helpers ───────────────────────────────────────────────────── */
 function getClientId(req) {
@@ -142,12 +144,16 @@ const getCustomerAnalytics = asyncHandler(async (req, res) => {
   const cId = getClientId(req);
   if (!cId) { res.status(400); throw new Error('clientId required'); }
 
+  // Single source of truth: Google reviews + private feedback are counted
+  // directly from the Review/Feedback collections (ground truth in DB),
+  // NOT from Customer.reviewStatus — that flag only updates when the
+  // review page successfully pings back with ?c=customerId, so it can
+  // under-count real submissions (e.g. QR scans without the param).
   const [total, sent, googleSubmitted, feedbackSubmitted, opened] = await Promise.all([
     Customer.countDocuments({ clientId: cId }),
     Customer.countDocuments({ clientId: cId, whatsappStatus: { $in: ['sent', 'clicked', 'reviewed'] } }),
-    // Count both new 'google_submitted' AND legacy 'submitted' values
-    Customer.countDocuments({ clientId: cId, reviewStatus: { $in: ['google_submitted', 'submitted'] } }),
-    Customer.countDocuments({ clientId: cId, reviewStatus: 'feedback_submitted' }),
+    Review.countDocuments({ clientId: cId, type: 'positive' }),
+    Feedback.countDocuments({ clientId: cId }),
     Customer.countDocuments({ clientId: cId, reviewStatus: 'opened' }),
   ]);
 
