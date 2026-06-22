@@ -77,6 +77,9 @@ export default function ReviewPage() {
 
   const qrToken    = new URLSearchParams(window.location.search).get('qr');
   const customerId = new URLSearchParams(window.location.search).get('c');
+  // ?retry=1 — used for "we resolved your issue, please review us again" follow-ups.
+  // Bypasses the "already submitted" localStorage lock so the customer can rate again.
+  const retryFlag  = new URLSearchParams(window.location.search).get('retry') === '1';
 
   /* ── Data fetch ── */
   const { data, isLoading, isError } = useQuery({
@@ -85,10 +88,11 @@ export default function ReviewPage() {
     retry: false,
   });
 
-  /* ── Check duplicate on mount — redirect to thankyou if already submitted ── */
+  /* ── Check duplicate on mount — redirect to thankyou if already submitted ──
+     Skipped when ?retry=1 is present (resolved-feedback "review us again" links). */
   useEffect(() => {
-    if (slug && isDone(slug)) setStep('thankyou');
-  }, [slug]);
+    if (slug && !retryFlag && isDone(slug)) setStep('thankyou');
+  }, [slug, retryFlag]);
 
   /* ── Track "opened" once ── */
   const trackedOpen = useRef(false);

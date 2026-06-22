@@ -1,13 +1,30 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { feedbackAPI } from '@/api';
+import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Star, Trash2, Inbox, CheckCircle2, Clock, Circle, XCircle } from 'lucide-react';
+import { Star, Trash2, Inbox, CheckCircle2, Clock, Circle, XCircle, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+/* ── Build & open WhatsApp "we resolved it, please review us" message ──
+   ?retry=1 on the review link bypasses the "already submitted" lock so the
+   customer can go through the rating flow again. */
+function sendReviewRequest(f, client) {
+  const phone = (f.phone || '').replace(/\D/g, '');
+  if (!phone) { toast.error('No phone number on file for this customer'); return; }
+
+  const reviewLink = `${window.location.origin}/review/${client?.slug || ''}?retry=1`;
+  const name = f.customerName || 'there';
+  const biz  = client?.businessName || 'our team';
+
+  const msg = `Hi ${name}! 👋\n\nThank you for your patience — we've resolved the issue you raised with us. We'd really appreciate it if you could share your updated experience with a quick review:\n\n👉 ${reviewLink}\n\nThank you so much! 🙏\n*${biz}*`;
+
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+}
 
 /* ── Status config ─────────────────────────────────────────────── */
 const STATUS = {
@@ -67,6 +84,8 @@ function StatusBadge({ status }) {
 /* ═══════════════════════════════════════════════════════════════ */
 export default function ClientFeedback() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const client = user?.client;
   const [statusTab, setStatusTab] = useState('');
 
   /* ── Fetch all feedback (for summary counts) ──────────────────── */
@@ -229,6 +248,17 @@ export default function ClientFeedback() {
 
                     {/* Right: actions */}
                     <div className="shrink-0 flex flex-col items-end gap-2">
+                      {/* Send "we resolved it, please review us" WhatsApp follow-up */}
+                      {f.status === 'resolved' && f.phone && (
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1"
+                          onClick={() => sendReviewRequest(f, client)}
+                        >
+                          <MessageCircle className="h-3 w-3" />
+                          Request Review
+                        </Button>
+                      )}
                       {/* Quick resolve — only show if not already resolved/closed */}
                       {!['resolved', 'closed'].includes(f.status) && (
                         <Button
