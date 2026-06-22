@@ -73,7 +73,6 @@ export default function ReviewPage() {
   // Negative feedback
   const [name,    setName]    = useState('');
   const [contact, setContact] = useState('');
-  const [email,   setEmail]   = useState('');
   const [message, setMessage] = useState('');
 
   const qrToken    = new URLSearchParams(window.location.search).get('qr');
@@ -231,7 +230,7 @@ export default function ReviewPage() {
       await reviewsAPI.submit({
         clientSlug: slug, rating, type: 'negative',
         customerName: name, customerPhone: contact,
-        customerEmail: email, message, qrToken,
+        message, qrToken,
       });
       if (customerId) publicAPI.trackCustomer(customerId, 'feedback_submitted').catch(() => {});
       // Mark done — prevent resubmission
@@ -468,7 +467,6 @@ export default function ReviewPage() {
               <form onSubmit={handleNegativeSubmit} className="space-y-3">
                 <div><Label>Name</Label><Input required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} /></div>
                 <div><Label>Contact number</Label><Input required maxLength={60} value={contact} onChange={(e) => setContact(e.target.value)} /></div>
-                <div><Label>Email</Label><Input type="email" required maxLength={255} value={email} onChange={(e) => setEmail(e.target.value)} /></div>
                 <div><Label>What went wrong?</Label><Textarea required rows={4} maxLength={2000} value={message} onChange={(e) => setMessage(e.target.value)} /></div>
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending…</> : 'Send feedback'}
