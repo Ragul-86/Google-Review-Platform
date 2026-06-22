@@ -21,7 +21,7 @@ const DEFAULT_TEMPLATE_CONTENT =
 `Hi {{CustomerName}}, 👋
 
 Thank you for choosing *{{BusinessName}}*!
-We hope you had a wonderful experience with {{PurposeOfVisit}}.
+We hope you had a wonderful experience with *{{PurposeOfVisit}}*.
 
 We'd love to hear your feedback — it only takes 30 seconds! 🌟
 👉 {{ReviewLink}}
@@ -147,7 +147,7 @@ const generateAITemplate = asyncHandler(async (req, res) => {
     const content =
 `Hi {{CustomerName}}, 👋
 
-Thank you for choosing *{{BusinessName}}* for ${services || 'your recent visit'}!
+Thank you for choosing *{{BusinessName}}* for *${services || 'your recent visit'}*!
 
 We hope you had a wonderful experience. ${templateGoal.toLowerCase().includes('review') ? 'Your feedback on Google helps us grow and helps others find us — it only takes 30 seconds! 🌟' : 'We\'d love to hear how we did!'}
 
