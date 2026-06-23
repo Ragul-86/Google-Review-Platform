@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authAPI } from '@/api';
+import { getTokens, saveTokens, clearTokens, prefixForRole } from '@/lib/authStorage';
 
 const AuthContext = createContext(null);
 
@@ -7,16 +8,13 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Auto-login on mount
+  // Auto-login on mount — reads the token scoped to the current area (/admin vs /client)
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
+    const { accessToken } = getTokens();
+    if (accessToken) {
       authAPI.me()
         .then((res) => setUser(res.data.user))
-        .catch(() => {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-        })
+        .catch(() => clearTokens())
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -26,16 +24,14 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const res = await authAPI.login({ email, password });
     const { user, accessToken, refreshToken } = res.data;
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
+    saveTokens(prefixForRole(user.role), { accessToken, refreshToken });
     setUser(user);
     return user;
   }, []);
 
   const logout = useCallback(async () => {
     try { await authAPI.logout(); } catch {}
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    clearTokens();
     setUser(null);
   }, []);
 

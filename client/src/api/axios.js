@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getTokens, clearTokens, currentPrefix } from '@/lib/authStorage';
 
 const API = axios.create({
   // In production (Vercel), VITE_API_URL points to Render backend.
@@ -8,11 +9,13 @@ const API = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor — attach access token
+// Request interceptor — attach access token scoped to the current area
+// (/admin vs /client), so an admin tab and a client tab open at the same
+// time in the same browser never send each other's tokens.
 API.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('accessToken');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    const { accessToken } = getTokens();
+    if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
     return config;
   },
   (error) => Promise.reject(error)
@@ -48,25 +51,32 @@ API.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const refreshToken = localStorage.getItem('refreshToken');
+      const prefix = currentPrefix();
+      const { refreshToken } = getTokens(prefix);
       if (!refreshToken) {
         isRefreshing = false;
-        localStorage.clear();
+        clearTokens(prefix);
         window.location.href = '/login';
         return Promise.reject(error);
       }
 
       try {
-        const { data } = await axios.post('/api/auth/refresh', { refreshToken });
-        localStorage.setItem('accessToken', data.accessToken);
-        localStorage.setItem('refreshToken', data.refreshToken);
+        // IMPORTANT: build the refresh URL off API's own baseURL, not a bare
+        // relative path. A relative "/api/auth/refresh" resolves against the
+        // *frontend's* origin (Vercel) in production instead of the Render
+        // backend, which 404s on every refresh and was silently logging
+        // everyone out ~15 min into every session (the access token's TTL) —
+        // regardless of activity.
+        const { data } = await axios.post(`${API.defaults.baseURL}/auth/refresh`, { refreshToken });
+        localStorage.setItem(`accessToken_${prefix}`, data.accessToken);
+        localStorage.setItem(`refreshToken_${prefix}`, data.refreshToken);
         API.defaults.headers.common.Authorization = `Bearer ${data.accessToken}`;
         processQueue(null, data.accessToken);
         originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
         return API(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        localStorage.clear();
+        clearTokens(prefix);
         window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {
