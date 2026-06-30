@@ -42,22 +42,44 @@ const WA_STATUS = {
 };
 
 const TABS = [
-  { key: '',         label: 'All' },
-  { key: 'pending',  label: 'Pending' },
-  { key: 'sent',     label: 'Sent' },
-  { key: 'redeemed', label: 'Redeemed' },
-  { key: 'expired',  label: 'Expired' },
+  { key: '',               label: 'All Rewards' },
+  { key: 'pending',        label: 'Pending' },
+  { key: 'sent',           label: 'Sent' },
+  { key: 'redeemed',       label: 'Redeemed' },
+  { key: 'expired',        label: 'Expired' },
+  { key: 'expiring_7',     label: 'Expiring in 7 Days' },
+  { key: 'expiring_today', label: 'Expiring Today' },
 ];
+
+/* ── Date helper ───────────────────────────────────────────────── */
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/* ── Days-remaining pill — terminal "Expired" once the reward has
+   actually expired, "Today" on its last valid day, otherwise a plain
+   day count that turns orange inside the final 3 days. ─────────── */
+function DaysRemaining({ reward }) {
+  if (reward.rewardStatus === 'expired') {
+    return <span className="text-red-500 font-medium text-sm">Expired</span>;
+  }
+  const d = reward.daysRemaining ?? 0;
+  if (d <= 0) return <span className="text-red-500 font-medium text-sm">Today</span>;
+  return (
+    <span className={cn('text-sm font-medium', d <= 3 ? 'text-orange-500' : 'text-gray-600')}>
+      {d} {d === 1 ? 'Day' : 'Days'}
+    </span>
+  );
+}
 
 /* ── Build the pre-filled WhatsApp message.
    GETMORE never sends this automatically — it only opens WhatsApp Web /
    the WhatsApp app with the message pre-filled. The client must press
    Send themselves inside WhatsApp. ───────────────────────────────── */
 function buildRewardMessage(reward, businessName) {
-  const validLine = reward.validUntil
-    ? `\nValid until: ${new Date(reward.validUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
-    : '';
-  return `Hi ${reward.customerName}! 🎉\n\nThank you for your review! You've won a reward of *₹${reward.rewardAmount}*.\n\nYour coupon code: *${reward.couponCode}*${validLine}\n\nShow this code at our store to redeem your reward.\n\nThank you,\n*${businessName || 'Our Team'}*`;
+  const biz = businessName || 'Our Team';
+  return `Hi ${reward.customerName},\n\nThank you for reviewing ${biz}.\n\n🎉 Congratulations!\nYou won: *₹${reward.rewardAmount}*\n\nCoupon Code: *${reward.couponCode}*\n\nThis reward is valid until: *${fmtDate(reward.validUntil)}*\nPlease redeem it before the expiry date.\n\nThank you,\n${biz}`;
 }
 
 /* ── Stat card ─────────────────────────────────────────────────── */
@@ -102,6 +124,7 @@ export default function RewardManagement() {
   const markOpenedMut = useMutation({
     mutationFn: rewardsAPI.markWhatsappOpened,
     onSuccess: invalidate,
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to update'),
   });
 
   const markSentMut = useMutation({
@@ -119,6 +142,10 @@ export default function RewardManagement() {
   /* Open WhatsApp Web with a pre-filled message — the client still has to
      press Send themselves. We just record that the compose screen opened. */
   function handleSendWhatsApp(reward) {
+    if (reward.rewardStatus === 'expired') {
+      toast.error('This reward has expired and can no longer be sent.');
+      return;
+    }
     const phone = (reward.phone || '').replace(/\D/g, '');
     if (!phone) { toast.error('No phone number on file for this customer'); return; }
     const msg = buildRewardMessage(reward, businessName);
@@ -127,7 +154,9 @@ export default function RewardManagement() {
   }
 
   const rewards = data?.data ?? [];
-  const counts  = data?.counts ?? { total: 0, pending: 0, sent: 0, redeemed: 0, expired: 0 };
+  const counts  = data?.counts ?? {
+    total: 0, pending: 0, sent: 0, redeemed: 0, expired: 0, expiringSoon: 0, expiringToday: 0,
+  };
   const pages   = data?.pages ?? 1;
 
   return (
@@ -149,18 +178,28 @@ export default function RewardManagement() {
       {/* ── Filter tabs ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit overflow-x-auto">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => { setStatusTab(t.key); setPage(1); }}
-              className={cn(
-                'px-3.5 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all',
-                statusTab === t.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700',
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
+          {TABS.map((t) => {
+            const badgeCount = t.key === 'expiring_7' ? counts.expiringSoon
+              : t.key === 'expiring_today' ? counts.expiringToday
+                : null;
+            return (
+              <button
+                key={t.key}
+                onClick={() => { setStatusTab(t.key); setPage(1); }}
+                className={cn(
+                  'px-3.5 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all flex items-center gap-1.5',
+                  statusTab === t.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700',
+                )}
+              >
+                {t.label}
+                {!!badgeCount && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 text-[11px] font-semibold">
+                    {badgeCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-2">
@@ -199,61 +238,68 @@ export default function RewardManagement() {
               <p className="text-sm text-gray-300 mt-1">Rewards won via the scratch card will show up here.</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Customer Name</TableHead>
-                  <TableHead>Mobile Number</TableHead>
-                  <TableHead>Reward Won</TableHead>
-                  <TableHead>Coupon Code</TableHead>
-                  <TableHead>Review Date</TableHead>
-                  <TableHead>Reward Status</TableHead>
-                  <TableHead>WhatsApp Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rewards.map((r) => {
-                  const rs = REWARD_STATUS[r.rewardStatus] ?? REWARD_STATUS.pending;
-                  const ws = WA_STATUS[r.whatsappStatus] ?? WA_STATUS.not_sent;
-                  return (
-                    <TableRow key={r._id}>
-                      <TableCell className="font-medium text-gray-900">{r.customerName}</TableCell>
-                      <TableCell className="text-gray-600">{r.phone}</TableCell>
-                      <TableCell className="font-semibold text-amber-600">₹{r.rewardAmount}</TableCell>
-                      <TableCell className="font-mono text-xs">{r.couponCode}</TableCell>
-                      <TableCell className="text-gray-500 text-sm">
-                        {new Date(r.reviewDate || r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </TableCell>
-                      <TableCell><Badge variant={rs.variant}>{rs.label}</Badge></TableCell>
-                      <TableCell><Badge variant={ws.variant}>{ws.label}</Badge></TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setViewTarget(r)}>
-                              <Eye className="h-4 w-4 mr-2" /> View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleSendWhatsApp(r)}>
-                              <MessageCircle className="h-4 w-4 mr-2" /> Send WhatsApp
-                            </DropdownMenuItem>
-                            {r.whatsappStatus !== 'sent' && (
-                              <DropdownMenuItem onClick={() => markSentMut.mutate(r._id)}>
-                                <CheckCircle2 className="h-4 w-4 mr-2" /> Mark as Sent
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Customer Name</TableHead>
+                    <TableHead>Mobile Number</TableHead>
+                    <TableHead>Reward Won</TableHead>
+                    <TableHead>Coupon Code</TableHead>
+                    <TableHead>Won Date</TableHead>
+                    <TableHead>Expiry Date</TableHead>
+                    <TableHead>Days Remaining</TableHead>
+                    <TableHead>Reward Status</TableHead>
+                    <TableHead>WhatsApp Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rewards.map((r) => {
+                    const rs = REWARD_STATUS[r.rewardStatus] ?? REWARD_STATUS.pending;
+                    const ws = WA_STATUS[r.whatsappStatus] ?? WA_STATUS.not_sent;
+                    const isExpired = r.rewardStatus === 'expired';
+                    return (
+                      <TableRow key={r._id}>
+                        <TableCell className="font-medium text-gray-900">{r.customerName}</TableCell>
+                        <TableCell className="text-gray-600">{r.phone}</TableCell>
+                        <TableCell className="font-semibold text-amber-600">₹{r.rewardAmount}</TableCell>
+                        <TableCell className="font-mono text-xs">{r.couponCode}</TableCell>
+                        <TableCell className="text-gray-500 text-sm whitespace-nowrap">{fmtDate(r.reviewDate || r.createdAt)}</TableCell>
+                        <TableCell className="text-gray-500 text-sm whitespace-nowrap">{fmtDate(r.validUntil)}</TableCell>
+                        <TableCell><DaysRemaining reward={r} /></TableCell>
+                        <TableCell><Badge variant={rs.variant}>{rs.label}</Badge></TableCell>
+                        <TableCell><Badge variant={ws.variant}>{ws.label}</Badge></TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setViewTarget(r)}>
+                                <Eye className="h-4 w-4 mr-2" /> View Details
                               </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                              {!isExpired && (
+                                <DropdownMenuItem onClick={() => handleSendWhatsApp(r)}>
+                                  <MessageCircle className="h-4 w-4 mr-2" /> Send WhatsApp
+                                </DropdownMenuItem>
+                              )}
+                              {!isExpired && r.whatsappStatus !== 'sent' && (
+                                <DropdownMenuItem onClick={() => markSentMut.mutate(r._id)}>
+                                  <CheckCircle2 className="h-4 w-4 mr-2" /> Mark as Sent
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -275,46 +321,55 @@ export default function RewardManagement() {
       <Dialog open={!!viewTarget} onOpenChange={(o) => !o && setViewTarget(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Reward Details</DialogTitle></DialogHeader>
-          {viewTarget && (
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between"><span className="text-gray-500">Customer Name</span><span className="font-medium">{viewTarget.customerName}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Mobile Number</span><span className="font-medium">{viewTarget.phone}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Reward Won</span><span className="font-semibold text-amber-600">₹{viewTarget.rewardAmount}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Coupon Code</span><span className="font-mono">{viewTarget.couponCode}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Review Date</span><span>{new Date(viewTarget.reviewDate || viewTarget.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
-              {viewTarget.validUntil && (
-                <div className="flex justify-between"><span className="text-gray-500">Valid Until</span><span>{new Date(viewTarget.validUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
-              )}
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">WhatsApp Status</span>
-                <Badge variant={(WA_STATUS[viewTarget.whatsappStatus] ?? WA_STATUS.not_sent).variant}>
-                  {(WA_STATUS[viewTarget.whatsappStatus] ?? WA_STATUS.not_sent).label}
-                </Badge>
-              </div>
+          {viewTarget && (() => {
+            const isExpired = viewTarget.rewardStatus === 'expired';
+            return (
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between"><span className="text-gray-500">Customer Name</span><span className="font-medium">{viewTarget.customerName}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Mobile Number</span><span className="font-medium">{viewTarget.phone}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Reward Won</span><span className="font-semibold text-amber-600">₹{viewTarget.rewardAmount}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Coupon Code</span><span className="font-mono">{viewTarget.couponCode}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Won Date</span><span>{fmtDate(viewTarget.reviewDate || viewTarget.createdAt)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Expiry Date</span><span>{fmtDate(viewTarget.validUntil)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-gray-500">Days Remaining</span><DaysRemaining reward={viewTarget} /></div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">WhatsApp Status</span>
+                  <Badge variant={(WA_STATUS[viewTarget.whatsappStatus] ?? WA_STATUS.not_sent).variant}>
+                    {(WA_STATUS[viewTarget.whatsappStatus] ?? WA_STATUS.not_sent).label}
+                  </Badge>
+                </div>
 
-              <div className="pt-2 border-t">
-                <Label className="text-gray-500 text-xs uppercase tracking-wide">Reward Status</Label>
-                <Select
-                  value={viewTarget.rewardStatus}
-                  onValueChange={(v) => {
-                    statusMut.mutate({ id: viewTarget._id, status: v });
-                    setViewTarget((t) => ({ ...t, rewardStatus: v }));
-                  }}
-                >
-                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(REWARD_STATUS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="pt-2 border-t">
+                  <Label className="text-gray-500 text-xs uppercase tracking-wide">Reward Status</Label>
+                  <Select
+                    value={viewTarget.rewardStatus}
+                    disabled={isExpired}
+                    onValueChange={(v) => {
+                      statusMut.mutate({ id: viewTarget._id, status: v });
+                      setViewTarget((t) => ({ ...t, rewardStatus: v }));
+                    }}
+                  >
+                    <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(REWARD_STATUS).map(([k, v]) => (
+                        <SelectItem key={k} value={k} disabled={k !== 'expired' && isExpired}>{v.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <Button className="w-full gap-2 mt-2" onClick={() => handleSendWhatsApp(viewTarget)}>
-                <MessageCircle className="h-4 w-4" /> Send WhatsApp
-              </Button>
-            </div>
-          )}
+                {isExpired ? (
+                  <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">
+                    This reward expired on {fmtDate(viewTarget.validUntil)} and can no longer be sent or redeemed.
+                  </p>
+                ) : (
+                  <Button className="w-full gap-2 mt-2" onClick={() => handleSendWhatsApp(viewTarget)}>
+                    <MessageCircle className="h-4 w-4" /> Send WhatsApp
+                  </Button>
+                )}
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

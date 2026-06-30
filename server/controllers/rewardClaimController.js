@@ -4,16 +4,11 @@ const Customer          = require('../models/Customer');
 const RewardConfig      = require('../models/RewardConfig');
 const RewardTransaction = require('../models/RewardTransaction');
 const { currentMonth, ensureMonthConfigs } = require('../utils/rewardMonth');
+const { calcValidUntil } = require('../utils/rewardExpiry');
 
 function generateCouponCode(amount) {
   const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
   return `GM${amount}-${rand}`;
-}
-
-// Last day of 'YYYY-MM', 23:59:59 local time.
-function endOfMonth(month) {
-  const [y, m] = month.split('-').map(Number);
-  return new Date(y, m, 0, 23, 59, 59);
 }
 
 /* ── Is the reward program live for this client right now? ───────
@@ -97,6 +92,7 @@ const claimReward = asyncHandler(async (req, res) => {
     if (cust && String(cust.clientId) === String(client._id)) resolvedCustomerId = cust._id;
   }
 
+  const wonDate = new Date();
   const transaction = await RewardTransaction.create({
     clientId: client._id,
     customerId: resolvedCustomerId,
@@ -104,8 +100,8 @@ const claimReward = asyncHandler(async (req, res) => {
     phone: phone.trim(),
     rewardAmount: won.amount,
     couponCode,
-    reviewDate: new Date(),
-    validUntil: endOfMonth(month),
+    reviewDate: wonDate,
+    validUntil: calcValidUntil(wonDate), // 30 days from the moment it's won
     rewardStatus: 'pending',
     whatsappStatus: 'not_sent',
     month,

@@ -23,6 +23,7 @@ const whatsappTemplateRoutes  = require('./routes/whatsappTemplates');
 const serviceRoutes           = require('./routes/services');
 const contactRoutes           = require('./routes/contact');
 const rewardRoutes            = require('./routes/rewards');
+const { expireOverdueRewards } = require('./utils/rewardExpiry');
 
 // Connect DB then auto-seed superadmin if none exists
 connectDB().then(async () => {
@@ -42,6 +43,21 @@ connectDB().then(async () => {
   } catch (e) {
     console.error('Auto-seed error (non-fatal):', e.message);
   }
+
+  // Reward validity: sweep any scratch-card rewards whose 30-day
+  // window already passed while the server was offline, then keep
+  // sweeping automatically once a day for as long as the process
+  // runs. Each transaction-list/detail request also runs a lazy,
+  // per-client sweep (see rewardController.js) so the dashboard is
+  // never more than one request stale even between daily sweeps.
+  try {
+    await expireOverdueRewards();
+  } catch (e) {
+    console.error('Reward expiry sweep error (non-fatal):', e.message);
+  }
+  setInterval(() => {
+    expireOverdueRewards().catch((e) => console.error('Reward expiry sweep error (non-fatal):', e.message));
+  }, 24 * 60 * 60 * 1000);
 });
 
 const app = express();

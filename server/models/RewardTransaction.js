@@ -41,10 +41,27 @@ const rewardTransactionSchema = new mongoose.Schema(
 
     month: { type: String, required: true, index: true }, // 'YYYY-MM' at time of claim
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  },
 );
 
 rewardTransactionSchema.index({ clientId: 1, createdAt: -1 });
 rewardTransactionSchema.index({ clientId: 1, rewardStatus: 1 });
+rewardTransactionSchema.index({ clientId: 1, validUntil: 1 });
+
+/* ── daysRemaining (virtual) ──────────────────────────────────────
+   Whole days between today and validUntil (date-only, ignoring time
+   of day) so "18 Days" reads the same all day long. Always 0 once a
+   reward has actually expired — never negative. Computed on read, so
+   it stays correct without any write/cron touching this document. */
+rewardTransactionSchema.virtual('daysRemaining').get(function () {
+  if (this.rewardStatus === 'expired' || !this.validUntil) return 0;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const expiry = new Date(this.validUntil); expiry.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((expiry - today) / 86400000));
+});
 
 module.exports = mongoose.model('RewardTransaction', rewardTransactionSchema);

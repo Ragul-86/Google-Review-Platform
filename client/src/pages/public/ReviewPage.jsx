@@ -682,9 +682,14 @@ export default function ReviewPage() {
               {scratched && (
                 <div className="mt-6 animate-in fade-in duration-300">
                   <p className="text-base font-semibold text-gray-900 mb-1">Congratulations! 🎉</p>
-                  <p className="text-sm text-muted-foreground mb-5">
+                  <p className="text-sm text-muted-foreground mb-2">
                     Show this screen at the store, or wait for our WhatsApp message with your coupon code.
                   </p>
+                  {reward.validUntil && (
+                    <p className="text-xs font-medium text-amber-600 mb-5">
+                      Valid until {new Date(reward.validUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} — redeem before it expires.
+                    </p>
+                  )}
                   <Button className="w-full" onClick={() => setStep('thankyou')}>Done</Button>
                 </div>
               )}

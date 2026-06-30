@@ -1,5 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const RewardTransaction = require('../models/RewardTransaction');
+const { expireOverdueRewards, applyLazyExpiry } = require('../utils/rewardExpiry');
 
 function getClientId(req) {
   return req.user.role === 'superadmin'
@@ -8,19 +9,39 @@ function getClientId(req) {
 }
 
 /* ── GET /api/rewards/transactions ──────────────────────────────────
-   Filters: status (pending/sent/redeemed/expired), search (customer
-   name / phone / coupon code / reward amount), dateRange
-   (today/week/month). Pagination via page/limit. `counts` is computed
-   from real DB counts (not just the current page) for the summary
-   stat cards on the Reward Management page. */
+   Filters: status (pending/sent/redeemed/expired, plus the synthetic
+   "expiring_7" / "expiring_today" views), search (customer name /
+   phone / coupon code / reward amount), dateRange (today/week/month).
+   Pagination via page/limit. `counts` is computed from real DB counts
+   (not just the current page) for the summary stat cards.
+
+   Every call first sweeps this client's overdue Pending/Sent rewards
+   to Expired — on top of the daily automatic sweep in server.js —
+   so the dashboard is always correct even if the daily timer hasn't
+   fired yet (e.g. right after a deploy). */
 const getRewards = asyncHandler(async (req, res) => {
   const clientId = getClientId(req);
   if (!clientId) { res.status(400); throw new Error('clientId required'); }
 
+  await expireOverdueRewards({ clientId });
+
   const { page = 1, limit = 20, status = '', search = '', dateRange = '' } = req.query;
   const query = { clientId };
 
-  if (status) query.rewardStatus = status;
+  const now = new Date();
+  if (status === 'expiring_7') {
+    const in7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    query.rewardStatus = { $in: ['pending', 'sent'] };
+    query.validUntil = { $gte: now, $lte: in7 };
+  } else if (status === 'expiring_today') {
+    const start = new Date(now); start.setHours(0, 0, 0, 0);
+    const end = new Date(now); end.setHours(23, 59, 59, 999);
+    query.rewardStatus = { $in: ['pending', 'sent'] };
+    query.validUntil = { $gte: start, $lte: end };
+  } else if (status) {
+    query.rewardStatus = status;
+  }
+
   if (search) {
     const trimmed = search.trim();
     const asNumber = Number(trimmed);
@@ -32,7 +53,6 @@ const getRewards = asyncHandler(async (req, res) => {
     ];
   }
   if (dateRange) {
-    const now = new Date();
     if (dateRange === 'today') {
       const start = new Date(now); start.setHours(0, 0, 0, 0);
       query.createdAt = { $gte: start };
@@ -52,12 +72,21 @@ const getRewards = asyncHandler(async (req, res) => {
     .limit(parseInt(limit));
 
   const baseQuery = { clientId };
-  const [totalAll, pending, sent, redeemed, expired] = await Promise.all([
+  const in7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+  const [totalAll, pending, sent, redeemed, expired, expiringSoon, expiringToday] = await Promise.all([
     RewardTransaction.countDocuments(baseQuery),
     RewardTransaction.countDocuments({ ...baseQuery, rewardStatus: 'pending' }),
     RewardTransaction.countDocuments({ ...baseQuery, rewardStatus: 'sent' }),
     RewardTransaction.countDocuments({ ...baseQuery, rewardStatus: 'redeemed' }),
     RewardTransaction.countDocuments({ ...baseQuery, rewardStatus: 'expired' }),
+    RewardTransaction.countDocuments({
+      ...baseQuery, rewardStatus: { $in: ['pending', 'sent'] }, validUntil: { $gte: now, $lte: in7 },
+    }),
+    RewardTransaction.countDocuments({
+      ...baseQuery, rewardStatus: { $in: ['pending', 'sent'] }, validUntil: { $gte: todayStart, $lte: todayEnd },
+    }),
   ]);
 
   res.json({
@@ -66,7 +95,9 @@ const getRewards = asyncHandler(async (req, res) => {
     total,
     page: parseInt(page),
     pages: Math.ceil(total / limit),
-    counts: { total: totalAll, pending, sent, redeemed, expired },
+    counts: {
+      total: totalAll, pending, sent, redeemed, expired, expiringSoon, expiringToday,
+    },
   });
 });
 
@@ -78,6 +109,7 @@ const getRewardById = asyncHandler(async (req, res) => {
   const clientId = getClientId(req);
   if (String(reward.clientId) !== String(clientId)) { res.status(403); throw new Error('Not authorized'); }
 
+  await applyLazyExpiry(reward);
   res.json({ success: true, data: reward });
 });
 
@@ -85,13 +117,18 @@ const getRewardById = asyncHandler(async (req, res) => {
    Fired right when the client clicks "Send WhatsApp" — purely
    telemetry recorded BEFORE window.open() runs. GETMORE itself sends
    nothing here; this just records that the client opened the WhatsApp
-   Web compose screen for this reward. */
+   Web compose screen for this reward. Blocked once a reward has
+   expired — expired rewards can never be sent again. */
 const markWhatsappOpened = asyncHandler(async (req, res) => {
   const reward = await RewardTransaction.findById(req.params.id);
   if (!reward) { res.status(404); throw new Error('Reward not found'); }
 
   const clientId = getClientId(req);
   if (String(reward.clientId) !== String(clientId)) { res.status(403); throw new Error('Not authorized'); }
+
+  if (await applyLazyExpiry(reward)) {
+    res.status(400); throw new Error('This reward has expired and can no longer be sent.');
+  }
 
   if (reward.whatsappStatus === 'not_sent') reward.whatsappStatus = 'opened';
   await reward.save();
@@ -101,13 +138,18 @@ const markWhatsappOpened = asyncHandler(async (req, res) => {
 /* ── PATCH /api/rewards/transactions/:id/mark-sent ─────────────────
    "Mark as Sent" — the client confirms they pressed Send themselves
    inside WhatsApp. Bumps whatsappStatus to "sent" and, if the reward
-   was still "pending", advances rewardStatus to "sent" too. */
+   was still "pending", advances rewardStatus to "sent" too. Blocked
+   on expired rewards. */
 const markSent = asyncHandler(async (req, res) => {
   const reward = await RewardTransaction.findById(req.params.id);
   if (!reward) { res.status(404); throw new Error('Reward not found'); }
 
   const clientId = getClientId(req);
   if (String(reward.clientId) !== String(clientId)) { res.status(403); throw new Error('Not authorized'); }
+
+  if (await applyLazyExpiry(reward)) {
+    res.status(400); throw new Error('This reward has expired and can no longer be sent.');
+  }
 
   reward.whatsappStatus = 'sent';
   if (reward.rewardStatus === 'pending') reward.rewardStatus = 'sent';
@@ -117,7 +159,9 @@ const markSent = asyncHandler(async (req, res) => {
 
 /* ── PATCH /api/rewards/transactions/:id/status ────────────────────
    Generic reward-status updater — used from "View Details" to mark a
-   reward Redeemed (customer showed up and used the coupon) or Expired. */
+   reward Redeemed (customer showed up and used the coupon). Once a
+   reward is Expired (or expires right now via the lazy check below)
+   it is terminal — it cannot be redeemed or sent again, only viewed. */
 const updateRewardStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
   const allowed = ['pending', 'sent', 'redeemed', 'expired'];
@@ -128,6 +172,11 @@ const updateRewardStatus = asyncHandler(async (req, res) => {
 
   const clientId = getClientId(req);
   if (String(reward.clientId) !== String(clientId)) { res.status(403); throw new Error('Not authorized'); }
+
+  const isExpired = await applyLazyExpiry(reward);
+  if (isExpired && status !== 'expired') {
+    res.status(400); throw new Error('Expired rewards cannot be redeemed or sent again.');
+  }
 
   reward.rewardStatus = status;
   await reward.save();
