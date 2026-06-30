@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -23,6 +24,7 @@ import {
 import {
   ClipboardCheck, Search, MoreVertical, Eye, Check, X, Gift,
   Star, Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight,
+  UserPlus, Copy, Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -58,6 +60,32 @@ function Stars({ n }) {
     </div>
   );
 }
+
+function CopyButton({ value, label }) {
+  const [copied, setCopied] = useState(false);
+  if (!value) return null;
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(value);
+        setCopied(true);
+        toast.success(`${label} copied`);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      className="inline-flex items-center justify-center h-6 w-6 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0"
+      title={`Copy ${label}`}
+    >
+      {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+    </button>
+  );
+}
+
+/* A request with no phone has no contact details yet — customerName always
+   carries a non-empty default ('Anonymous Customer'), so phone is the only
+   reliable "missing details" signal. */
+const isUnassigned = (r) => !r?.phone;
 
 function StatCard({ icon: Icon, label, value, color, bg }) {
   return (
@@ -102,7 +130,14 @@ export default function ReviewVerification() {
   const [dateRange, setDateRange] = useState('');
   const [page, setPage]           = useState(1);
   const [viewTarget, setViewTarget] = useState(null);
+  const [assignTarget, setAssignTarget] = useState(null);
+  const [assignForm, setAssignForm] = useState({ customerName: '', phone: '', email: '' });
   const limit = 15;
+
+  function openAssign(r) {
+    setAssignTarget(r);
+    setAssignForm({ customerName: '', phone: '', email: '' });
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['review-requests', statusTab, search, dateRange, page],
@@ -112,6 +147,16 @@ export default function ReviewVerification() {
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['review-requests'] });
+
+  const assignMut = useMutation({
+    mutationFn: ({ id, data }) => reviewRequestsAPI.assignCustomer(id, data),
+    onSuccess: () => {
+      toast.success('Customer details saved');
+      invalidate();
+      setAssignTarget(null);
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to save customer details'),
+  });
 
   const approveMut = useMutation({
     mutationFn: reviewRequestsAPI.approve,
@@ -229,9 +274,38 @@ export default function ReviewVerification() {
                     const alreadySent = !!r.rewardTransactionId;
                     return (
                       <TableRow key={r._id}>
-                        <TableCell className="font-medium text-gray-900">{r.customerName}</TableCell>
-                        <TableCell className="text-gray-600">{r.phone || '—'}</TableCell>
-                        <TableCell className="text-gray-600">{r.email || '—'}</TableCell>
+                        <TableCell className="font-medium text-gray-900">
+                          {isUnassigned(r) ? (
+                            <button
+                              type="button"
+                              onClick={() => openAssign(r)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed border-amber-300 bg-amber-50 text-amber-700 text-xs font-semibold hover:bg-amber-100 hover:border-amber-400 transition-colors"
+                            >
+                              <UserPlus className="h-3.5 w-3.5" /> Assign Customer
+                            </button>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <span>{r.customerName}</span>
+                              <CopyButton value={r.customerName} label="Customer Name" />
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-gray-600">
+                          {r.phone ? (
+                            <div className="flex items-center gap-1">
+                              <span>{r.phone}</span>
+                              <CopyButton value={r.phone} label="Mobile Number" />
+                            </div>
+                          ) : '—'}
+                        </TableCell>
+                        <TableCell className="text-gray-600">
+                          {r.email ? (
+                            <div className="flex items-center gap-1">
+                              <span>{r.email}</span>
+                              <CopyButton value={r.email} label="Email" />
+                            </div>
+                          ) : '—'}
+                        </TableCell>
                         <TableCell><Stars n={r.rating} /></TableCell>
                         <TableCell className="text-gray-600">{r.category || '—'}</TableCell>
                         <TableCell className="text-gray-500 text-sm whitespace-nowrap">{fmtDate(r.reviewDate || r.createdAt)}</TableCell>
@@ -295,9 +369,45 @@ export default function ReviewVerification() {
             const alreadySent = !!viewTarget.rewardTransactionId;
             return (
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between"><span className="text-gray-500">Customer Name</span><span className="font-medium">{viewTarget.customerName}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Mobile Number</span><span className="font-medium">{viewTarget.phone || '—'}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Email</span><span className="font-medium">{viewTarget.email || '—'}</span></div>
+                {isUnassigned(viewTarget) ? (
+                  <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/70 p-4 text-center space-y-2.5">
+                    <p className="text-xs text-amber-700">No customer details on file for this review yet.</p>
+                    <Button
+                      size="sm"
+                      onClick={() => { setViewTarget(null); openAssign(viewTarget); }}
+                      className="gap-2 bg-amber-500 hover:bg-amber-600 text-white"
+                    >
+                      <UserPlus className="h-3.5 w-3.5" /> Assign Customer
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">Customer Name</span>
+                      <span className="font-medium flex items-center gap-1">{viewTarget.customerName}<CopyButton value={viewTarget.customerName} label="Customer Name" /></span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">Mobile Number</span>
+                      <span className="font-medium flex items-center gap-1">{viewTarget.phone}<CopyButton value={viewTarget.phone} label="Mobile Number" /></span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">Email</span>
+                      <span className="font-medium flex items-center gap-1">{viewTarget.email || '—'}<CopyButton value={viewTarget.email} label="Email" /></span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2 text-gray-600"
+                      onClick={() => {
+                        const block = `Name: ${viewTarget.customerName}\nMobile: ${viewTarget.phone}\nEmail: ${viewTarget.email || '—'}`;
+                        navigator.clipboard.writeText(block);
+                        toast.success('Customer details copied');
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5" /> Copy Customer Details
+                    </Button>
+                  </>
+                )}
                 <div className="flex justify-between items-center"><span className="text-gray-500">Rating</span><Stars n={viewTarget.rating} /></div>
                 <div className="flex justify-between"><span className="text-gray-500">Selected Category</span><span className="font-medium">{viewTarget.category || '—'}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Review Date</span><span>{fmtDate(viewTarget.reviewDate || viewTarget.createdAt)}</span></div>
@@ -341,6 +451,70 @@ export default function ReviewVerification() {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Assign Customer Details modal ───────────────────────── */}
+      <Dialog open={!!assignTarget} onOpenChange={(o) => !o && setAssignTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2.5">
+              <span className="h-9 w-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                <UserPlus className="h-4.5 w-4.5 text-amber-600" />
+              </span>
+              Assign Customer Details
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-500 -mt-1">
+            Fill in who left this review so you can send their Scratch Card over WhatsApp manually.
+          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!assignForm.customerName.trim() || !assignForm.phone.trim()) {
+                toast.error('Customer name and mobile number are required');
+                return;
+              }
+              assignMut.mutate({ id: assignTarget._id, data: assignForm });
+            }}
+            className="space-y-4 pt-1"
+          >
+            <div className="space-y-1.5">
+              <Label>Customer Name <span className="text-red-500">*</span></Label>
+              <Input
+                autoFocus
+                value={assignForm.customerName}
+                onChange={(e) => setAssignForm((f) => ({ ...f, customerName: e.target.value }))}
+                placeholder="e.g. Priya Sharma"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Mobile Number <span className="text-red-500">*</span></Label>
+              <Input
+                value={assignForm.phone}
+                onChange={(e) => setAssignForm((f) => ({ ...f, phone: e.target.value }))}
+                placeholder="e.g. 9876543210"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Email <span className="text-gray-400 font-normal">(optional)</span></Label>
+              <Input
+                type="email"
+                value={assignForm.email}
+                onChange={(e) => setAssignForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="e.g. priya@email.com"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setAssignTarget(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="flex-1 gap-2" disabled={assignMut.isPending}>
+                {assignMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                Save
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

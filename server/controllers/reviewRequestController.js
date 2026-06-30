@@ -158,6 +158,31 @@ async function findOwnedRequest(req, res) {
   return reviewRequest;
 }
 
+/* ── PATCH /api/review-requests/:id/assign-customer ───────────────────
+   Backfills Customer Name + Mobile Number (+ optional Email) on a
+   review request that arrived with no contact details — i.e. a
+   generic QR-poster scan with no prior Customer record, so
+   createReviewRequest had nothing to resolve. The client fills these
+   in by hand from the Review Verification dashboard once they know
+   who left the review, so a Scratch Card link can still be sent to
+   them over WhatsApp afterward. This never creates a reward and never
+   touches WhatsApp itself. */
+const assignCustomerDetails = asyncHandler(async (req, res) => {
+  const { customerName, phone, email } = req.body;
+  if (!customerName?.trim() || !phone?.trim()) {
+    res.status(400);
+    throw new Error('Customer name and mobile number are required');
+  }
+
+  const reviewRequest = await findOwnedRequest(req, res);
+  reviewRequest.customerName = customerName.trim();
+  reviewRequest.phone = phone.trim();
+  reviewRequest.email = email?.trim() || '';
+  await reviewRequest.save();
+
+  res.json({ success: true, data: reviewRequest });
+});
+
 /* ── PATCH /api/review-requests/:id/approve ───────────────────────── */
 const approveReviewRequest = asyncHandler(async (req, res) => {
   const reviewRequest = await findOwnedRequest(req, res);
@@ -232,6 +257,7 @@ module.exports = {
   createReviewRequest,
   getReviewRequests,
   getReviewRequestById,
+  assignCustomerDetails,
   approveReviewRequest,
   rejectReviewRequest,
   sendScratchCard,

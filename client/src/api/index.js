@@ -134,6 +134,7 @@ export const reviewRequestsAPI = {
   // Protected — Review Verification dashboard
   getAll:           (params) => API.get('/review-requests', { params }),
   getById:          (id) => API.get(`/review-requests/${id}`),
+  assignCustomer:   (id, data) => API.patch(`/review-requests/${id}/assign-customer`, data),
   approve:          (id) => API.patch(`/review-requests/${id}/approve`),
   reject:           (id) => API.patch(`/review-requests/${id}/reject`),
   sendScratchCard:  (id) => API.patch(`/review-requests/${id}/send-scratch-card`),

@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { publicScratchAPI } from '@/api';
 import { Card, CardContent } from '@/components/ui/card';
+import ConfettiBurst from '@/components/ConfettiBurst';
 import { Gift, PartyPopper, Clock, XCircle, Loader2, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { createScratchPlayer, playCelebrationChime, vibrateSuccess } from '@/lib/scratchSound';
 
 function fmtDate(d) {
   if (!d) return '';
@@ -40,6 +43,7 @@ function MysteryScratchCard({ onScratched, busy }) {
   const canvasRef = useRef(null);
   const drawingRef = useRef(false);
   const firedRef = useRef(false);
+  const playerRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -56,6 +60,18 @@ function MysteryScratchCard({ onScratched, busy }) {
     ctx.fillText('✦ SCRATCH HERE ✦', canvas.width / 2, canvas.height / 2);
   }, []);
 
+  // Lazily create the synthesized scratch-sound player on first touch —
+  // browsers require an AudioContext to start/resume inside a real user
+  // gesture, so we can't build it any earlier than that.
+  function getPlayer() {
+    if (!playerRef.current) playerRef.current = createScratchPlayer();
+    return playerRef.current;
+  }
+
+  useEffect(() => {
+    return () => { playerRef.current?.dispose(); };
+  }, []);
+
   function getPos(e, canvas) {
     const rect = canvas.getBoundingClientRect();
     const point = e.touches ? e.touches[0] : e;
@@ -65,9 +81,23 @@ function MysteryScratchCard({ onScratched, busy }) {
     };
   }
 
+  function startScratching(e) {
+    if (firedRef.current || busy) return;
+    drawingRef.current = true;
+    getPlayer().start();
+    scratch(e);
+  }
+
+  function stopScratching() {
+    drawingRef.current = false;
+    playerRef.current?.stop();
+  }
+
   function fireReveal() {
     if (firedRef.current) return;
     firedRef.current = true;
+    drawingRef.current = false;
+    playerRef.current?.stop();
     onScratched();
   }
 
@@ -80,12 +110,14 @@ function MysteryScratchCard({ onScratched, busy }) {
     ctx.beginPath();
     ctx.arc(x, y, 22, 0, Math.PI * 2);
     ctx.fill();
+    playerRef.current?.nudge();
 
     const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
     let cleared = 0;
     let sampled = 0;
     for (let i = 3; i < data.length; i += 4 * 20) { sampled++; if (data[i] === 0) cleared++; }
-    if (sampled > 0 && cleared / sampled > 0.45) fireReveal();
+    // "More than 60% cleared" → the reward is considered fully revealed.
+    if (sampled > 0 && cleared / sampled > 0.6) fireReveal();
   }
 
   return (
@@ -100,12 +132,13 @@ function MysteryScratchCard({ onScratched, busy }) {
         width={320}
         height={176}
         className={cn('absolute inset-0 w-full h-full touch-none', busy ? 'cursor-wait' : 'cursor-pointer')}
-        onMouseDown={() => { drawingRef.current = true; }}
-        onMouseUp={() => { drawingRef.current = false; }}
-        onMouseLeave={() => { drawingRef.current = false; }}
+        onMouseDown={startScratching}
+        onMouseUp={stopScratching}
+        onMouseLeave={stopScratching}
         onMouseMove={(e) => drawingRef.current && scratch(e)}
-        onTouchStart={(e) => { drawingRef.current = true; scratch(e); }}
-        onTouchEnd={() => { drawingRef.current = false; }}
+        onTouchStart={startScratching}
+        onTouchEnd={stopScratching}
+        onTouchCancel={stopScratching}
         onTouchMove={scratch}
         onDoubleClick={fireReveal}
       />
@@ -137,6 +170,7 @@ export default function ScratchCardPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [copied, setCopied] = useState(false);
   const [noRewardsLeft, setNoRewardsLeft] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -164,6 +198,13 @@ export default function ScratchCardPage() {
       if (res.data?.success && res.data?.data) {
         setReward((prev) => ({ ...prev, ...res.data.data, isScratched: true, rewardStatus: 'scratched' }));
         setPhase('result');
+        // Celebrate only on this live, first-ever reveal — never on a
+        // reopened link (that path sets phase via the load effect above
+        // and never touches this branch).
+        playCelebrationChime();
+        vibrateSuccess();
+        setCelebrate(true);
+        setTimeout(() => setCelebrate(false), 2200);
       } else {
         setNoRewardsLeft(true);
         setPhase('result');
@@ -242,10 +283,19 @@ export default function ScratchCardPage() {
             )}
 
             {phase === 'result' && (
-              <div className="animate-in fade-in duration-300">
-                <div className="mx-auto w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-5">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.85, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 14, delay: 0.1 }}
+                  className="mx-auto w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-5"
+                >
                   <PartyPopper className="h-8 w-8 text-green-500" />
-                </div>
+                </motion.div>
 
                 {noRewardsLeft ? (
                   <>
@@ -282,12 +332,13 @@ export default function ScratchCardPage() {
                     </p>
                   </>
                 )}
-              </div>
+              </motion.div>
             )}
 
           </CardContent>
         </Card>
       </div>
+      <ConfettiBurst active={celebrate} />
     </div>
   );
 }
