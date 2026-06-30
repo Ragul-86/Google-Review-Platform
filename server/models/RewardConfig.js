@@ -14,7 +14,9 @@ const rewardConfigSchema = new mongoose.Schema(
       index: true,
     },
     amount:     { type: Number, required: true, min: 0 },
-    totalCards: { type: Number, required: true, min: 1 },
+    // min 0 (not 1) so "Generate Reward Tiers" can create a tier shell
+    // before the client has typed in a card count for it yet.
+    totalCards: { type: Number, required: true, min: 0, default: 0 },
     claimed:    { type: Number, default: 0, min: 0 },
     status: {
       type: String,

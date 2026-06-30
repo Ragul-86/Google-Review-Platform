@@ -31,12 +31,12 @@ const getRewards = asyncHandler(async (req, res) => {
   const now = new Date();
   if (status === 'expiring_7') {
     const in7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    query.rewardStatus = { $in: ['pending', 'sent'] };
+    query.rewardStatus = 'scratched'; // only scratched rewards carry a real validUntil countdown
     query.validUntil = { $gte: now, $lte: in7 };
   } else if (status === 'expiring_today') {
     const start = new Date(now); start.setHours(0, 0, 0, 0);
     const end = new Date(now); end.setHours(23, 59, 59, 999);
-    query.rewardStatus = { $in: ['pending', 'sent'] };
+    query.rewardStatus = 'scratched';
     query.validUntil = { $gte: start, $lte: end };
   } else if (status) {
     query.rewardStatus = status;
@@ -75,17 +75,18 @@ const getRewards = asyncHandler(async (req, res) => {
   const in7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
-  const [totalAll, pending, sent, redeemed, expired, expiringSoon, expiringToday] = await Promise.all([
+  const [totalAll, pending, sent, scratched, redeemed, expired, expiringSoon, expiringToday] = await Promise.all([
     RewardTransaction.countDocuments(baseQuery),
     RewardTransaction.countDocuments({ ...baseQuery, rewardStatus: 'pending' }),
     RewardTransaction.countDocuments({ ...baseQuery, rewardStatus: 'sent' }),
+    RewardTransaction.countDocuments({ ...baseQuery, rewardStatus: 'scratched' }),
     RewardTransaction.countDocuments({ ...baseQuery, rewardStatus: 'redeemed' }),
     RewardTransaction.countDocuments({ ...baseQuery, rewardStatus: 'expired' }),
     RewardTransaction.countDocuments({
-      ...baseQuery, rewardStatus: { $in: ['pending', 'sent'] }, validUntil: { $gte: now, $lte: in7 },
+      ...baseQuery, rewardStatus: 'scratched', validUntil: { $gte: now, $lte: in7 },
     }),
     RewardTransaction.countDocuments({
-      ...baseQuery, rewardStatus: { $in: ['pending', 'sent'] }, validUntil: { $gte: todayStart, $lte: todayEnd },
+      ...baseQuery, rewardStatus: 'scratched', validUntil: { $gte: todayStart, $lte: todayEnd },
     }),
   ]);
 
@@ -96,7 +97,7 @@ const getRewards = asyncHandler(async (req, res) => {
     page: parseInt(page),
     pages: Math.ceil(total / limit),
     counts: {
-      total: totalAll, pending, sent, redeemed, expired, expiringSoon, expiringToday,
+      total: totalAll, pending, sent, scratched, redeemed, expired, expiringSoon, expiringToday,
     },
   });
 });
@@ -164,7 +165,7 @@ const markSent = asyncHandler(async (req, res) => {
    it is terminal — it cannot be redeemed or sent again, only viewed. */
 const updateRewardStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
-  const allowed = ['pending', 'sent', 'redeemed', 'expired'];
+  const allowed = ['pending', 'sent', 'scratched', 'redeemed', 'expired'];
   if (!allowed.includes(status)) { res.status(400); throw new Error('Invalid status'); }
 
   const reward = await RewardTransaction.findById(req.params.id);
@@ -176,6 +177,9 @@ const updateRewardStatus = asyncHandler(async (req, res) => {
   const isExpired = await applyLazyExpiry(reward);
   if (isExpired && status !== 'expired') {
     res.status(400); throw new Error('Expired rewards cannot be redeemed or sent again.');
+  }
+  if (status === 'redeemed' && reward.rewardStatus !== 'scratched') {
+    res.status(400); throw new Error('Only a revealed (scratched) reward can be marked as redeemed.');
   }
 
   reward.rewardStatus = status;

@@ -15,7 +15,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/select';
 import {
-  Gift, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Loader2, RotateCcw, Ticket,
+  Gift, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Loader2, RotateCcw, Ticket, Layers, Save,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -32,6 +32,7 @@ function formatMonthLabel(m) {
 }
 
 const EMPTY = { amount: '', totalCards: '' };
+const EMPTY_BULK = { start: '', end: '', step: '' };
 
 /* ── TierForm (outside parent to prevent remount on render) ──── */
 function TierForm({ values, onFieldChange, onSubmit, loading, submitLabel }) {
@@ -73,12 +74,17 @@ export default function ScratchCardSettings() {
 
   const [month, setMonth]           = useState(currentMonthStr());
   const [addOpen, setAddOpen]       = useState(false);
+  const [bulkOpen, setBulkOpen]     = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [form, setForm]             = useState(EMPTY);
   const [editForm, setEditForm]     = useState(EMPTY);
+  const [bulkForm, setBulkForm]     = useState(EMPTY_BULK);
+  // Per-tier card-count edits, keyed by tier _id — pending until "Save All"
+  const [counts, setCounts]         = useState({});
 
   const handleAddField  = useCallback((k, v) => setForm((p)     => ({ ...p, [k]: v })), []);
   const handleEditField = useCallback((k, v) => setEditForm((p) => ({ ...p, [k]: v })), []);
+  const handleBulkField = useCallback((k, v) => setBulkForm((p) => ({ ...p, [k]: v })), []);
 
   const invalidate = useCallback(() => qc.invalidateQueries({ queryKey: ['reward-configs'] }), [qc]);
 
@@ -130,6 +136,47 @@ export default function ScratchCardSettings() {
     onError: (e) => toast.error(e?.response?.data?.message || 'Failed to reset'),
   });
 
+  // ── Bulk tier generation: Start/End/Step → auto-creates ₹10/₹20/.../₹100
+  // style tiers in one go. Existing amounts for the month are skipped, never
+  // duplicated or overwritten.
+  const bulkGenerateMut = useMutation({
+    mutationFn: rewardConfigAPI.bulkGenerate,
+    onSuccess: (res) => {
+      const { created = 0, skipped = 0 } = res.data ?? {};
+      toast.success(
+        skipped > 0
+          ? `Generated ${created} tier${created === 1 ? '' : 's'} (${skipped} already existed)`
+          : `Generated ${created} tier${created === 1 ? '' : 's'}`,
+      );
+      setBulkOpen(false);
+      setBulkForm(EMPTY_BULK);
+      invalidate();
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to generate tiers'),
+  });
+
+  // ── Save All: bulk-persist every pending per-tier card-count edit at once
+  const dirtyEntries = useMemo(
+    () => Object.entries(counts).filter(([id, v]) => {
+      const t = tiers.find((x) => x._id === id);
+      return t && v !== '' && Number.isFinite(Number(v)) && Number(v) !== Number(t.totalCards);
+    }),
+    [counts, tiers],
+  );
+
+  const saveAllMut = useMutation({
+    mutationFn: async () => {
+      await Promise.all(dirtyEntries.map(([id, v]) => rewardConfigAPI.update(id, { totalCards: Number(v) })));
+      return dirtyEntries.length;
+    },
+    onSuccess: (n) => {
+      toast.success(`Saved ${n} tier${n === 1 ? '' : 's'}`);
+      setCounts({});
+      invalidate();
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to save changes'),
+  });
+
   function openEdit(tier) {
     setEditTarget(tier);
     setEditForm({ amount: String(tier.amount), totalCards: String(tier.totalCards) });
@@ -173,12 +220,32 @@ export default function ScratchCardSettings() {
             <Button variant="outline" className="gap-2" onClick={confirmReset} disabled={resetMut.isPending}>
               <RotateCcw className="h-4 w-4" /> Reset Monthly Rewards
             </Button>
+            <Button variant="outline" className="gap-2" onClick={() => setBulkOpen(true)}>
+              <Layers className="h-4 w-4" /> Generate Tiers
+            </Button>
             <Button className="gap-2" onClick={() => setAddOpen(true)}>
               <Plus className="h-4 w-4" /> Add Tier
             </Button>
           </div>
         }
       />
+
+      {dirtyEntries.length > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5">
+          <p className="text-sm text-amber-700">
+            {dirtyEntries.length} tier{dirtyEntries.length === 1 ? '' : 's'} with unsaved card-count changes
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setCounts({})} disabled={saveAllMut.isPending}>
+              Discard
+            </Button>
+            <Button size="sm" className="gap-1.5" onClick={() => saveAllMut.mutate()} disabled={saveAllMut.isPending}>
+              {saveAllMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              Save All
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* ── Reward Analytics summary ─────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -231,12 +298,23 @@ export default function ScratchCardSettings() {
                     )}
                   </button>
 
-                  <div className="flex items-center gap-2 min-w-[110px]">
+                  <div className="flex items-center gap-2 min-w-[90px]">
                     <Ticket className="h-5 w-5 text-amber-500" />
                     <span className="font-bold text-lg text-gray-900">₹{tier.amount}</span>
                   </div>
 
-                  <div className="flex-1 min-w-[220px]">
+                  <div className="shrink-0 w-[110px]">
+                    <Label className="text-[11px] text-gray-400">Total Cards</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      className={cn('h-8 mt-0.5', counts[tier._id] !== undefined && Number(counts[tier._id]) !== tier.totalCards && 'border-amber-400 ring-1 ring-amber-200')}
+                      value={counts[tier._id] ?? tier.totalCards}
+                      onChange={(e) => setCounts((p) => ({ ...p, [tier._id]: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="flex-1 min-w-[200px]">
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                       <span>{tier.claimed} / {tier.totalCards} claimed</span>
                       <span>{tier.remaining} remaining</span>
@@ -311,6 +389,59 @@ export default function ScratchCardSettings() {
               submitLabel="Save Changes"
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Generate Tiers dialog — bulk tier generation by numeric range ──
+           e.g. Start=10, End=100, Step=10 → auto-creates ₹10, ₹20, … ₹100.
+           Card counts default to 0 — fill them in below and Save All. ── */}
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Generate Reward Tiers — {formatMonthLabel(month)}</DialogTitle></DialogHeader>
+          <div className="space-y-3 mt-2">
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <Label>Start (₹)</Label>
+                <Input type="number" min="0" value={bulkForm.start} onChange={(e) => handleBulkField('start', e.target.value)} placeholder="10" />
+              </div>
+              <div>
+                <Label>End (₹)</Label>
+                <Input type="number" min="0" value={bulkForm.end} onChange={(e) => handleBulkField('end', e.target.value)} placeholder="100" />
+              </div>
+              <div>
+                <Label>Step (₹)</Label>
+                <Input type="number" min="1" value={bulkForm.step} onChange={(e) => handleBulkField('step', e.target.value)} placeholder="10" />
+              </div>
+            </div>
+            {(() => {
+              const s = Number(bulkForm.start);
+              const e = Number(bulkForm.end);
+              const st = Number(bulkForm.step);
+              if (!Number.isFinite(s) || !Number.isFinite(e) || !Number.isFinite(st) || st <= 0 || e < s) return null;
+              const count = Math.floor((e - s) / st) + 1;
+              return (
+                <p className="text-xs text-gray-500">
+                  Will create up to {count} tier{count === 1 ? '' : 's'}: ₹{s}, ₹{Math.min(s + st, e)}{count > 2 ? ', …' : ''}{count > 1 ? `, ₹${e}` : ''}.
+                  Existing tiers for this month are skipped. New tiers start at 0 cards — set counts after generating.
+                </p>
+              );
+            })()}
+            <Button
+              className="w-full gap-2"
+              disabled={bulkGenerateMut.isPending}
+              onClick={() => {
+                const s = Number(bulkForm.start);
+                const e = Number(bulkForm.end);
+                const st = Number(bulkForm.step);
+                if (!Number.isFinite(s) || !Number.isFinite(e) || !Number.isFinite(st) || st <= 0 || e < s) {
+                  return toast.error('Enter a valid Start, End and Step (Step > 0, End ≥ Start)');
+                }
+                bulkGenerateMut.mutate({ start: s, end: e, step: st, month });
+              }}
+            >
+              {bulkGenerateMut.isPending ? <><Loader2 className="h-4 w-4 animate-spin" />Generating…</> : <><Layers className="h-4 w-4" />Generate Tiers</>}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

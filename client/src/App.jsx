@@ -32,12 +32,14 @@ import ClientCustomers  from '@/pages/client/Customers';
 import ClientServices   from '@/pages/client/Services';
 import ScratchCardSettings from '@/pages/client/ScratchCardSettings';
 import RewardManagement from '@/pages/client/RewardManagement';
+import ReviewVerification from '@/pages/client/ReviewVerification';
 import ClientCategories from '@/pages/client/Categories';
 import ClientReports from '@/pages/client/Reports';
 import ClientSettings from '@/pages/client/Settings';
 
 // Public pages
 import ReviewPage from '@/pages/public/ReviewPage';
+import ScratchCardPage from '@/pages/public/ScratchCardPage';
 import Landing from '@/pages/Landing';
 
 const queryClient = new QueryClient({
@@ -67,6 +69,9 @@ export default function App() {
               {/* Public review page */}
               <Route path="/review/:slug" element={<ReviewPage />} />
 
+              {/* Public Scratch Card reveal — secure one-time-use link sent over WhatsApp */}
+              <Route path="/reward/:token" element={<ScratchCardPage />} />
+
               {/* Super Admin routes */}
               <Route element={<ProtectedRoute allowedRoles={['superadmin']} />}>
                 <Route element={<AdminLayout />}>
@@ -92,6 +97,7 @@ export default function App() {
                   <Route path="/client/qrcodes"    element={<ClientQRCodes />} />
                   <Route path="/client/customers"  element={<ClientCustomers />} />
                   <Route path="/client/services"   element={<ClientServices />} />
+                  <Route path="/client/review-verification" element={<ReviewVerification />} />
                   <Route path="/client/rewards" element={<RewardManagement />} />
                   <Route path="/client/scratch-card-settings" element={<ScratchCardSettings />} />
                   <Route path="/client/analytics" element={<ClientAnalytics />} />

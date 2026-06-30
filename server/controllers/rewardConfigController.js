@@ -51,7 +51,9 @@ const createConfig = asyncHandler(async (req, res) => {
   if (!clientId) { res.status(400); throw new Error('clientId required'); }
 
   const { amount, totalCards, month } = req.body;
-  if (!amount || !totalCards) { res.status(400); throw new Error('amount and totalCards are required'); }
+  if (!amount || totalCards === undefined || totalCards === null || Number(totalCards) < 0) {
+    res.status(400); throw new Error('amount and totalCards are required');
+  }
 
   const config = await RewardConfig.create({
     clientId,
@@ -121,6 +123,58 @@ const resetMonth = asyncHandler(async (req, res) => {
   res.json({ success: true, data: configs.map(withAnalytics), month });
 });
 
+/* ── POST /api/rewards/configs/bulk-generate ───────────────────────
+   Body: { start, end, step, month? } — "Generate Reward Tiers".
+   Instead of adding ₹10, ₹20, ₹30 ... one at a time, the client picks
+   a numeric range (e.g. Start 10, End 100, Step 10) and every amount
+   in that range is created as its own tier in one shot. Tiers are
+   created with totalCards 0 — the client fills in "Number of Scratch
+   Cards" per tier afterwards and clicks "Save All". Amounts that
+   already exist for this month are skipped, never duplicated. */
+const bulkGenerateConfigs = asyncHandler(async (req, res) => {
+  const clientId = getClientId(req);
+  if (!clientId) { res.status(400); throw new Error('clientId required'); }
+
+  const month = req.body.month || currentMonth();
+  const start = Number(req.body.start);
+  const end = Number(req.body.end);
+  const step = Number(req.body.step);
+
+  if (!Number.isFinite(start) || !Number.isFinite(end) || !Number.isFinite(step) || step <= 0 || end < start) {
+    res.status(400);
+    throw new Error('Provide a valid Start, End and Step (Step > 0, End ≥ Start).');
+  }
+  // Safety cap so a typo (e.g. step 0.01) can't try to create thousands of docs.
+  const count = Math.floor((end - start) / step) + 1;
+  if (count > 200) { res.status(400); throw new Error('That range would generate too many tiers — narrow it down.'); }
+
+  const existing = await RewardConfig.find({ clientId, month }).select('amount');
+  const existingAmounts = new Set(existing.map((c) => c.amount));
+
+  const amounts = [];
+  for (let amount = start; amount <= end + 1e-9; amount += step) {
+    amounts.push(Math.round(amount * 100) / 100); // avoid float drift (10.000000002)
+  }
+
+  const toCreate = amounts.filter((amount) => !existingAmounts.has(amount));
+  if (toCreate.length > 0) {
+    await RewardConfig.insertMany(
+      toCreate.map((amount) => ({
+        clientId, amount, totalCards: 0, claimed: 0, status: 'active', month,
+      })),
+    );
+  }
+
+  const configs = await RewardConfig.find({ clientId, month }).sort({ amount: 1 });
+  res.status(201).json({
+    success: true,
+    data: configs.map(withAnalytics),
+    month,
+    created: toCreate.length,
+    skipped: amounts.length - toCreate.length,
+  });
+});
+
 module.exports = {
-  getConfigs, getConfigMonths, createConfig, updateConfig, deleteConfig, toggleConfig, resetMonth,
+  getConfigs, getConfigMonths, createConfig, updateConfig, deleteConfig, toggleConfig, resetMonth, bulkGenerateConfigs,
 };

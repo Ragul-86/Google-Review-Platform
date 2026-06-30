@@ -20,8 +20,11 @@ async function expireOverdueRewards(filter = {}) {
   return RewardTransaction.updateMany(
     {
       ...filter,
-      rewardStatus: { $in: ['pending', 'sent'] },
-      validUntil: { $lt: new Date() },
+      rewardStatus: { $in: ['pending', 'sent', 'scratched'] },
+      // validUntil is null until the customer actually scratches — guard
+      // against the BSON rule where null sorts below Date, which would
+      // otherwise make $lt match every not-yet-scratched transaction too.
+      validUntil: { $ne: null, $lt: new Date() },
     },
     { $set: { rewardStatus: 'expired' } },
   );
@@ -34,7 +37,7 @@ async function expireOverdueRewards(filter = {}) {
    so the caller can reject the action. */
 async function applyLazyExpiry(reward) {
   if (
-    ['pending', 'sent'].includes(reward.rewardStatus)
+    ['pending', 'sent', 'scratched'].includes(reward.rewardStatus)
     && reward.validUntil
     && reward.validUntil < new Date()
   ) {

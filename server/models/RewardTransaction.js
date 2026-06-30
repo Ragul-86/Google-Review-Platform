@@ -1,11 +1,15 @@
 const mongoose = require('mongoose');
 
 /* ── RewardTransaction ───────────────────────────────────────────
-   One document per scratch-card win. Created the instant a customer
-   claims a reward (status starts "pending"). GETMORE never sends
-   WhatsApp automatically — whatsappStatus only moves forward when the
-   *client* manually clicks "Send WhatsApp" (→ opened) / "Mark as Sent"
-   (→ sent) from the Reward Management dashboard. */
+   One document per scratch-card link sent to a customer. Created the
+   instant the client clicks "Send Scratch Card" in Review Verification
+   (status starts "sent" — the secure token already exists, but the
+   reward itself is NOT chosen yet). The actual reward + coupon code
+   are only assigned once the customer opens the link and scratches
+   (isScratched flips true, scratchedAt stamped, status → "scratched").
+   GETMORE never sends WhatsApp automatically — the client always
+   manually presses Send inside WhatsApp Web after this record (and the
+   wa.me link) is created. */
 const rewardTransactionSchema = new mongoose.Schema(
   {
     clientId: {
@@ -19,18 +23,32 @@ const rewardTransactionSchema = new mongoose.Schema(
       ref: 'Customer',
       default: null,
     },
+    reviewRequestId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ReviewRequest',
+      default: null,
+      index: true,
+    },
     customerName: { type: String, required: true, trim: true, maxlength: 150 },
     phone:        { type: String, required: true, trim: true, maxlength: 30 },
+    email:        { type: String, default: '', trim: true, maxlength: 150 },
 
-    rewardAmount: { type: Number, required: true },
-    couponCode:   { type: String, required: true, unique: true, trim: true },
+    // Secure, unique, one-time-use link token — e.g. /reward/ABCD123XYZ
+    token: { type: String, required: true, unique: true, trim: true, index: true },
+
+    // Unknown until the customer actually scratches — assigned at that moment.
+    rewardAmount: { type: Number, default: null },
+    couponCode:   { type: String, default: null, trim: true, unique: true, sparse: true },
+
+    isScratched: { type: Boolean, default: false },
+    scratchedAt: { type: Date, default: null },
 
     reviewDate: { type: Date, default: Date.now },
-    validUntil: { type: Date, default: null },
+    validUntil: { type: Date, default: null }, // set only once scratched (scratchedAt + 30 days)
 
     rewardStatus: {
       type: String,
-      enum: ['pending', 'sent', 'redeemed', 'expired'],
+      enum: ['pending', 'sent', 'scratched', 'redeemed', 'expired'],
       default: 'pending',
     },
     whatsappStatus: {
@@ -39,7 +57,7 @@ const rewardTransactionSchema = new mongoose.Schema(
       default: 'not_sent',
     },
 
-    month: { type: String, required: true, index: true }, // 'YYYY-MM' at time of claim
+    month: { type: String, required: true, index: true }, // 'YYYY-MM' tier pool the win drew from
   },
   {
     timestamps: true,

@@ -23,6 +23,8 @@ const whatsappTemplateRoutes  = require('./routes/whatsappTemplates');
 const serviceRoutes           = require('./routes/services');
 const contactRoutes           = require('./routes/contact');
 const rewardRoutes            = require('./routes/rewards');
+const reviewRequestRoutes     = require('./routes/reviewRequests');
+const { getRewardByToken, scratchReward } = require('./controllers/publicScratchController');
 const { expireOverdueRewards } = require('./utils/rewardExpiry');
 
 // Connect DB then auto-seed superadmin if none exists
@@ -138,6 +140,7 @@ app.use('/api/whatsapp-templates', whatsappTemplateRoutes);
 app.use('/api/services',           serviceRoutes);
 app.use('/api/contact',            contactRoutes);
 app.use('/api/rewards',            rewardRoutes);
+app.use('/api/review-requests',    reviewRequestRoutes);
 
 // Public: Track customer review journey (called from review page — no auth needed)
 app.patch('/api/public/customer/:id/track', require('express-async-handler')(async (req, res) => {
@@ -183,6 +186,16 @@ app.get('/api/public/client/:slug', require('express-async-handler')(async (req,
   const rewardsEnabled = await hasActiveRewardProgram(client._id);
   res.json({ success: true, data: { client: { ...client.toObject(), rewardsEnabled }, categories, services } });
 }));
+
+// Public: Scratch Card reward link — look up by secure token (no auth).
+// Read-only; the Scratch Card page calls this on load to decide whether
+// to show the scratch animation or the already-revealed reward details.
+app.get('/api/public/reward/:token', getRewardByToken);
+
+// Public: Scratch the card — the ONE-TIME reveal (no auth). GETMORE
+// never calls this automatically; it only runs when the customer
+// themselves swipes the card on the link the client sent.
+app.post('/api/public/reward/:token/scratch', scratchReward);
 
 // Error handling
 app.use(notFound);

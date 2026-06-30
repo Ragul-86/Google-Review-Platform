@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { rewardsAPI } from '@/api';
-import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,29 +21,28 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
 import {
-  Gift, Search, MoreVertical, Eye, MessageCircle, CheckCircle2,
-  Ticket, Clock, Send, Award, XCircle, ChevronLeft, ChevronRight,
+  Gift, Search, MoreVertical, Eye, CheckCircle2,
+  Ticket, Send, Sparkles, Award, XCircle, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-/* ── Status configs ───────────────────────────────────────────── */
+/* ── Status configs ───────────────────────────────────────────────
+   Lifecycle: Sent (link delivered, customer hasn't opened/scratched
+   it yet) → Scratched (random reward revealed, countdown active) →
+   Redeemed (client confirms in-store) or Expired (30 days passed). */
 const REWARD_STATUS = {
-  pending:  { label: 'Pending',  variant: 'warning' },
-  sent:     { label: 'Sent',     variant: 'default' },
-  redeemed: { label: 'Redeemed', variant: 'success' },
-  expired:  { label: 'Expired',  variant: 'destructive' },
-};
-const WA_STATUS = {
-  not_sent: { label: 'Not Sent', variant: 'outline' },
-  opened:   { label: 'Opened',   variant: 'secondary' },
-  sent:     { label: 'Sent',     variant: 'success' },
+  pending:   { label: 'Pending',   variant: 'outline' },
+  sent:      { label: 'Sent',      variant: 'secondary' },
+  scratched: { label: 'Scratched', variant: 'default' },
+  redeemed:  { label: 'Redeemed',  variant: 'success' },
+  expired:   { label: 'Expired',   variant: 'destructive' },
 };
 
 const TABS = [
   { key: '',               label: 'All Rewards' },
-  { key: 'pending',        label: 'Pending' },
-  { key: 'sent',           label: 'Sent' },
+  { key: 'sent',           label: 'Sent — Awaiting Scratch' },
+  { key: 'scratched',      label: 'Scratched' },
   { key: 'redeemed',       label: 'Redeemed' },
   { key: 'expired',        label: 'Expired' },
   { key: 'expiring_7',     label: 'Expiring in 7 Days' },
@@ -57,10 +55,12 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-/* ── Days-remaining pill — terminal "Expired" once the reward has
-   actually expired, "Today" on its last valid day, otherwise a plain
-   day count that turns orange inside the final 3 days. ─────────── */
+/* ── Days-remaining pill ──────────────────────────────────────────
+   Not meaningful until the customer actually scratches (no validUntil
+   yet) — shows a plain dash for Sent rewards, "Expired" once
+   terminal, "Today" on the last valid day, orange inside 3 days. */
 function DaysRemaining({ reward }) {
+  if (!reward.isScratched) return <span className="text-gray-400 text-sm">—</span>;
   if (reward.rewardStatus === 'expired') {
     return <span className="text-red-500 font-medium text-sm">Expired</span>;
   }
@@ -71,15 +71,6 @@ function DaysRemaining({ reward }) {
       {d} {d === 1 ? 'Day' : 'Days'}
     </span>
   );
-}
-
-/* ── Build the pre-filled WhatsApp message.
-   GETMORE never sends this automatically — it only opens WhatsApp Web /
-   the WhatsApp app with the message pre-filled. The client must press
-   Send themselves inside WhatsApp. ───────────────────────────────── */
-function buildRewardMessage(reward, businessName) {
-  const biz = businessName || 'Our Team';
-  return `Hi ${reward.customerName},\n\nThank you for reviewing ${biz}.\n\n🎉 Congratulations!\nYou won: *₹${reward.rewardAmount}*\n\nCoupon Code: *${reward.couponCode}*\n\nThis reward is valid until: *${fmtDate(reward.validUntil)}*\nPlease redeem it before the expiry date.\n\nThank you,\n${biz}`;
 }
 
 /* ── Stat card ─────────────────────────────────────────────────── */
@@ -99,11 +90,15 @@ function StatCard({ icon: Icon, label, value, color, bg }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   Reward Management — this is purely a tracking/redemption view now.
+   Scratch Card links are created and sent from Review Verification
+   (Approve → Send Scratch Card). By the time a transaction shows up
+   here it's already "Sent"; this page's job is to watch it become
+   "Scratched" and let the client mark it "Redeemed" once the
+   customer shows up in-store with their coupon code. ═══════════════ */
 export default function RewardManagement() {
   const qc = useQueryClient();
-  const { user } = useAuth();
-  const businessName = user?.client?.businessName;
 
   const [statusTab, setStatusTab] = useState('');
   const [search, setSearch]       = useState('');
@@ -121,41 +116,15 @@ export default function RewardManagement() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['reward-transactions'] });
 
-  const markOpenedMut = useMutation({
-    mutationFn: rewardsAPI.markWhatsappOpened,
-    onSuccess: invalidate,
-    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to update'),
-  });
-
-  const markSentMut = useMutation({
-    mutationFn: rewardsAPI.markSent,
-    onSuccess: () => { toast.success('Marked as sent'); invalidate(); },
-    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to update'),
-  });
-
   const statusMut = useMutation({
     mutationFn: ({ id, status }) => rewardsAPI.updateStatus(id, status),
     onSuccess: () => { toast.success('Reward status updated'); invalidate(); },
     onError: (e) => toast.error(e?.response?.data?.message || 'Failed to update'),
   });
 
-  /* Open WhatsApp Web with a pre-filled message — the client still has to
-     press Send themselves. We just record that the compose screen opened. */
-  function handleSendWhatsApp(reward) {
-    if (reward.rewardStatus === 'expired') {
-      toast.error('This reward has expired and can no longer be sent.');
-      return;
-    }
-    const phone = (reward.phone || '').replace(/\D/g, '');
-    if (!phone) { toast.error('No phone number on file for this customer'); return; }
-    const msg = buildRewardMessage(reward, businessName);
-    markOpenedMut.mutate(reward._id);
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
-  }
-
   const rewards = data?.data ?? [];
   const counts  = data?.counts ?? {
-    total: 0, pending: 0, sent: 0, redeemed: 0, expired: 0, expiringSoon: 0, expiringToday: 0,
+    total: 0, sent: 0, scratched: 0, redeemed: 0, expired: 0, expiringSoon: 0, expiringToday: 0,
   };
   const pages   = data?.pages ?? 1;
 
@@ -163,16 +132,16 @@ export default function RewardManagement() {
     <div className="space-y-5">
       <PageHeader
         title="Reward Management"
-        subtitle="Track scratch-card rewards won by customers and manage WhatsApp delivery"
+        subtitle="Track scratch-card links sent to customers and confirm in-store redemptions"
       />
 
       {/* ── Scratch Card Analytics ─────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <StatCard icon={Gift}        label="Total Rewards"    value={counts.total}    color="text-gray-600"   bg="bg-gray-100" />
-        <StatCard icon={Clock}       label="Pending"          value={counts.pending}  color="text-yellow-600" bg="bg-yellow-50" />
-        <StatCard icon={Send}        label="Sent"              value={counts.sent}     color="text-blue-600"   bg="bg-blue-50" />
-        <StatCard icon={Award}       label="Redeemed"         value={counts.redeemed} color="text-green-600"  bg="bg-green-50" />
-        <StatCard icon={XCircle}     label="Expired"          value={counts.expired}  color="text-red-600"    bg="bg-red-50" />
+        <StatCard icon={Gift}     label="Total Rewards" value={counts.total}     color="text-gray-600"   bg="bg-gray-100" />
+        <StatCard icon={Send}     label="Sent"          value={counts.sent}      color="text-blue-600"   bg="bg-blue-50" />
+        <StatCard icon={Sparkles} label="Scratched"     value={counts.scratched} color="text-amber-600"  bg="bg-amber-50" />
+        <StatCard icon={Award}    label="Redeemed"      value={counts.redeemed}  color="text-green-600"  bg="bg-green-50" />
+        <StatCard icon={XCircle}  label="Expired"       value={counts.expired}   color="text-red-600"    bg="bg-red-50" />
       </div>
 
       {/* ── Filter tabs ─────────────────────────────────────────── */}
@@ -235,7 +204,7 @@ export default function RewardManagement() {
             <div className="py-16 text-center">
               <Ticket className="h-10 w-10 text-gray-200 mx-auto mb-3" />
               <p className="font-medium text-gray-400">No rewards found</p>
-              <p className="text-sm text-gray-300 mt-1">Rewards won via the scratch card will show up here.</p>
+              <p className="text-sm text-gray-300 mt-1">Scratch Cards sent from Review Verification will show up here.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -246,30 +215,29 @@ export default function RewardManagement() {
                     <TableHead>Mobile Number</TableHead>
                     <TableHead>Reward Won</TableHead>
                     <TableHead>Coupon Code</TableHead>
+                    <TableHead>Sent Date</TableHead>
                     <TableHead>Won Date</TableHead>
                     <TableHead>Expiry Date</TableHead>
                     <TableHead>Days Remaining</TableHead>
-                    <TableHead>Reward Status</TableHead>
-                    <TableHead>WhatsApp Status</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rewards.map((r) => {
                     const rs = REWARD_STATUS[r.rewardStatus] ?? REWARD_STATUS.pending;
-                    const ws = WA_STATUS[r.whatsappStatus] ?? WA_STATUS.not_sent;
-                    const isExpired = r.rewardStatus === 'expired';
+                    const canRedeem = r.rewardStatus === 'scratched';
                     return (
                       <TableRow key={r._id}>
                         <TableCell className="font-medium text-gray-900">{r.customerName}</TableCell>
                         <TableCell className="text-gray-600">{r.phone}</TableCell>
-                        <TableCell className="font-semibold text-amber-600">₹{r.rewardAmount}</TableCell>
-                        <TableCell className="font-mono text-xs">{r.couponCode}</TableCell>
-                        <TableCell className="text-gray-500 text-sm whitespace-nowrap">{fmtDate(r.reviewDate || r.createdAt)}</TableCell>
+                        <TableCell className="font-semibold text-amber-600">{r.isScratched ? `₹${r.rewardAmount}` : '—'}</TableCell>
+                        <TableCell className="font-mono text-xs">{r.couponCode || '—'}</TableCell>
+                        <TableCell className="text-gray-500 text-sm whitespace-nowrap">{fmtDate(r.createdAt)}</TableCell>
+                        <TableCell className="text-gray-500 text-sm whitespace-nowrap">{fmtDate(r.scratchedAt)}</TableCell>
                         <TableCell className="text-gray-500 text-sm whitespace-nowrap">{fmtDate(r.validUntil)}</TableCell>
                         <TableCell><DaysRemaining reward={r} /></TableCell>
                         <TableCell><Badge variant={rs.variant}>{rs.label}</Badge></TableCell>
-                        <TableCell><Badge variant={ws.variant}>{ws.label}</Badge></TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -281,14 +249,9 @@ export default function RewardManagement() {
                               <DropdownMenuItem onClick={() => setViewTarget(r)}>
                                 <Eye className="h-4 w-4 mr-2" /> View Details
                               </DropdownMenuItem>
-                              {!isExpired && (
-                                <DropdownMenuItem onClick={() => handleSendWhatsApp(r)}>
-                                  <MessageCircle className="h-4 w-4 mr-2" /> Send WhatsApp
-                                </DropdownMenuItem>
-                              )}
-                              {!isExpired && r.whatsappStatus !== 'sent' && (
-                                <DropdownMenuItem onClick={() => markSentMut.mutate(r._id)}>
-                                  <CheckCircle2 className="h-4 w-4 mr-2" /> Mark as Sent
+                              {canRedeem && (
+                                <DropdownMenuItem onClick={() => statusMut.mutate({ id: r._id, status: 'redeemed' })}>
+                                  <CheckCircle2 className="h-4 w-4 mr-2" /> Mark as Redeemed
                                 </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
@@ -323,27 +286,26 @@ export default function RewardManagement() {
           <DialogHeader><DialogTitle>Reward Details</DialogTitle></DialogHeader>
           {viewTarget && (() => {
             const isExpired = viewTarget.rewardStatus === 'expired';
+            const canRedeem = viewTarget.rewardStatus === 'scratched';
             return (
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between"><span className="text-gray-500">Customer Name</span><span className="font-medium">{viewTarget.customerName}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Mobile Number</span><span className="font-medium">{viewTarget.phone}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Reward Won</span><span className="font-semibold text-amber-600">₹{viewTarget.rewardAmount}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Coupon Code</span><span className="font-mono">{viewTarget.couponCode}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Won Date</span><span>{fmtDate(viewTarget.reviewDate || viewTarget.createdAt)}</span></div>
+                {!!viewTarget.email && (
+                  <div className="flex justify-between"><span className="text-gray-500">Email</span><span className="font-medium">{viewTarget.email}</span></div>
+                )}
+                <div className="flex justify-between"><span className="text-gray-500">Reward Won</span><span className="font-semibold text-amber-600">{viewTarget.isScratched ? `₹${viewTarget.rewardAmount}` : 'Not scratched yet'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Coupon Code</span><span className="font-mono">{viewTarget.couponCode || '—'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Sent Date</span><span>{fmtDate(viewTarget.createdAt)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Won Date</span><span>{fmtDate(viewTarget.scratchedAt)}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Expiry Date</span><span>{fmtDate(viewTarget.validUntil)}</span></div>
                 <div className="flex justify-between items-center"><span className="text-gray-500">Days Remaining</span><DaysRemaining reward={viewTarget} /></div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-500">WhatsApp Status</span>
-                  <Badge variant={(WA_STATUS[viewTarget.whatsappStatus] ?? WA_STATUS.not_sent).variant}>
-                    {(WA_STATUS[viewTarget.whatsappStatus] ?? WA_STATUS.not_sent).label}
-                  </Badge>
-                </div>
 
                 <div className="pt-2 border-t">
                   <Label className="text-gray-500 text-xs uppercase tracking-wide">Reward Status</Label>
                   <Select
                     value={viewTarget.rewardStatus}
-                    disabled={isExpired}
+                    disabled={isExpired || !canRedeem}
                     onValueChange={(v) => {
                       statusMut.mutate({ id: viewTarget._id, status: v });
                       setViewTarget((t) => ({ ...t, rewardStatus: v }));
@@ -352,20 +314,21 @@ export default function RewardManagement() {
                     <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {Object.entries(REWARD_STATUS).map(([k, v]) => (
-                        <SelectItem key={k} value={k} disabled={k !== 'expired' && isExpired}>{v.label}</SelectItem>
+                        <SelectItem key={k} value={k} disabled={k !== viewTarget.rewardStatus && k !== 'redeemed'}>{v.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {isExpired ? (
+                {isExpired && (
                   <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">
-                    This reward expired on {fmtDate(viewTarget.validUntil)} and can no longer be sent or redeemed.
+                    This reward expired on {fmtDate(viewTarget.validUntil)} and can no longer be redeemed.
                   </p>
-                ) : (
-                  <Button className="w-full gap-2 mt-2" onClick={() => handleSendWhatsApp(viewTarget)}>
-                    <MessageCircle className="h-4 w-4" /> Send WhatsApp
-                  </Button>
+                )}
+                {!isExpired && !viewTarget.isScratched && (
+                  <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">
+                    Waiting for the customer to open the link and scratch the card.
+                  </p>
                 )}
               </div>
             );

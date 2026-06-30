@@ -125,15 +125,34 @@ export const publicAPI = {
   getClientBySlug: (slug) => API.get(`/public/client/${slug}`),
   // Track customer review journey from public review page (no auth)
   trackCustomer: (id, status) => API.patch(`/public/customer/${id}/track`, { status }),
-  // Scratch-card claim (no auth) — logs a "Pending" reward, never sends WhatsApp
-  claimReward: (data) => API.post('/rewards/claim', data),
 };
 
-// ─── Rewards: tier configuration (Scratch Card Settings) ─────────────────────
+// ─── Review Requests (Review Verification) ────────────────────────────────────
+export const reviewRequestsAPI = {
+  // Public — "I've Submitted My Review" (no auth). Never creates a reward.
+  create:           (data) => API.post('/review-requests', data),
+  // Protected — Review Verification dashboard
+  getAll:           (params) => API.get('/review-requests', { params }),
+  getById:          (id) => API.get(`/review-requests/${id}`),
+  approve:          (id) => API.patch(`/review-requests/${id}/approve`),
+  reject:           (id) => API.patch(`/review-requests/${id}/reject`),
+  sendScratchCard:  (id) => API.patch(`/review-requests/${id}/send-scratch-card`),
+};
+
+// ─── Public Scratch Card link (/reward/:token) ─────────────────────────────────
+export const publicScratchAPI = {
+  // Read-only lookup — never mutates (except a lazy expiry sweep)
+  getByToken: (token) => API.get(`/public/reward/${token}`),
+  // The ONE-TIME reveal — only ever called once per token by the customer
+  scratch:    (token) => API.post(`/public/reward/${token}/scratch`),
+};
+
+// ─── Rewards: tier configuration (Scratch Card Rewards) ───────────────────────
 export const rewardConfigAPI = {
   getAll:       (params) => API.get('/rewards/configs', { params }),
   getMonths:    ()       => API.get('/rewards/configs/months'),
   create:       (data)   => API.post('/rewards/configs', data),
+  bulkGenerate: (data)   => API.post('/rewards/configs/bulk-generate', data),
   update:       (id, data) => API.put(`/rewards/configs/${id}`, data),
   delete:       (id)     => API.delete(`/rewards/configs/${id}`),
   toggle:       (id)     => API.patch(`/rewards/configs/${id}/toggle`),
