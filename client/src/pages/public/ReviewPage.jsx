@@ -8,10 +8,96 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  Star, ExternalLink, CheckCircle2, ArrowLeft, Loader2, Copy, Check, Wrench, AlertCircle,
+  Star, ExternalLink, CheckCircle2, ArrowLeft, Loader2, Copy, Check, Wrench, AlertCircle, Gift,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+/* ── Scratch Card ──────────────────────────────────────────────────
+   Lightweight canvas scratch-off. The reward is rendered underneath a
+   painted gold layer; mouse/touch drag erases the layer (destination-out
+   compositing) and once ~45% is cleared the reward is auto-revealed. */
+function ScratchCard({ reward, onRevealed }) {
+  const canvasRef = useRef(null);
+  const drawingRef = useRef(false);
+  const [revealed, setRevealed] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    grad.addColorStop(0, '#FBBF24');
+    grad.addColorStop(1, '#F59E0B');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#111111';
+    ctx.font = 'bold 15px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('✦ SCRATCH HERE ✦', canvas.width / 2, canvas.height / 2);
+  }, []);
+
+  function getPos(e, canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const point = e.touches ? e.touches[0] : e;
+    return {
+      x: (point.clientX - rect.left) * (canvas.width / rect.width),
+      y: (point.clientY - rect.top) * (canvas.height / rect.height),
+    };
+  }
+
+  function reveal() {
+    if (revealed) return;
+    setRevealed(true);
+    onRevealed?.();
+  }
+
+  function scratch(e) {
+    if (revealed) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const { x, y } = getPos(e, canvas);
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    ctx.arc(x, y, 22, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Sample every 20th pixel's alpha channel to estimate cleared %
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    let cleared = 0;
+    let sampled = 0;
+    for (let i = 3; i < data.length; i += 4 * 20) { sampled++; if (data[i] === 0) cleared++; }
+    if (sampled > 0 && cleared / sampled > 0.45) reveal();
+  }
+
+  return (
+    <div className="relative mx-auto w-full max-w-xs h-44 rounded-2xl overflow-hidden shadow-lg border border-amber-200">
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 to-white text-center px-4">
+        <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">You Won</p>
+        <p className="text-3xl font-extrabold text-gray-900 mt-1">₹{reward.rewardAmount}</p>
+        <p className="text-xs text-gray-400 mt-1.5">
+          Coupon: <span className="font-mono font-semibold text-gray-700">{reward.couponCode}</span>
+        </p>
+      </div>
+      {!revealed && (
+        <canvas
+          ref={canvasRef}
+          width={320}
+          height={176}
+          className="absolute inset-0 w-full h-full cursor-pointer touch-none"
+          onMouseDown={() => { drawingRef.current = true; }}
+          onMouseUp={() => { drawingRef.current = false; }}
+          onMouseLeave={() => { drawingRef.current = false; }}
+          onMouseMove={(e) => drawingRef.current && scratch(e)}
+          onTouchStart={(e) => { drawingRef.current = true; scratch(e); }}
+          onTouchEnd={() => { drawingRef.current = false; }}
+          onTouchMove={scratch}
+          onDoubleClick={reveal}
+        />
+      )}
+    </div>
+  );
+}
 
 /* ── Google URL validation ─────────────────────────────────────── */
 const GOOGLE_REVIEW_HOSTS = [
@@ -74,6 +160,13 @@ export default function ReviewPage() {
   const [name,    setName]    = useState('');
   const [contact, setContact] = useState('');
   const [message, setMessage] = useState('');
+
+  // Scratch card reward claim (positive flow only)
+  const [rewardName,  setRewardName]  = useState('');
+  const [rewardPhone, setRewardPhone] = useState('');
+  const [claiming, setClaiming] = useState(false);
+  const [reward,   setReward]   = useState(null);
+  const [scratched, setScratched] = useState(false);
 
   const qrToken    = new URLSearchParams(window.location.search).get('qr');
   const customerId = new URLSearchParams(window.location.search).get('c');
@@ -224,7 +317,39 @@ export default function ReviewPage() {
 
     // Mark done — prevent resubmission
     markDone(slug);
-    setStep('thankyou');
+    // If this business has an active scratch-card reward program, let the
+    // customer claim a reward before the Thank You screen. Otherwise skip
+    // straight to Thank You as before.
+    setStep(client.rewardsEnabled ? 'confirm' : 'thankyou');
+  }
+
+  /* ── Claim a scratch-card reward ─────────────────────────────────
+     Public, no-auth endpoint. Only ever writes a "Pending" record to
+     MongoDB — GETMORE never sends WhatsApp from here or anywhere else
+     in this flow. Sending is a manual action the client takes later
+     from their dashboard. */
+  async function handleClaimSubmit(e) {
+    e.preventDefault();
+    setClaiming(true);
+    try {
+      const res = await publicAPI.claimReward({
+        clientSlug: slug,
+        customerName: rewardName,
+        phone: rewardPhone,
+        customerId: customerId || undefined,
+      });
+      if (res.data?.success && res.data?.data) {
+        setReward(res.data.data);
+        setStep('scratch');
+      } else {
+        toast.info('No rewards available right now. Thank you for your review!');
+        setStep('thankyou');
+      }
+    } catch {
+      toast.error('Could not claim your reward. Please try again.');
+    } finally {
+      setClaiming(false);
+    }
   }
 
   async function handleNegativeSubmit(e) {
@@ -496,6 +621,73 @@ export default function ReviewPage() {
                   {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending…</> : 'Send feedback'}
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── Claim reward: collect name + mobile, then scratch ── */}
+        {step === 'confirm' && (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mb-5">
+                <Gift className="h-8 w-8 text-amber-500" />
+              </div>
+              <h2 className="font-bold text-xl text-gray-900 mb-2">Claim Your Reward</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                Submitted your review on Google? Enter your details to scratch your reward card.
+              </p>
+              <form onSubmit={handleClaimSubmit} className="space-y-3 text-left">
+                <div>
+                  <Label>Your Name</Label>
+                  <Input required maxLength={120} value={rewardName} onChange={(e) => setRewardName(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Mobile Number</Label>
+                  <Input
+                    required
+                    maxLength={20}
+                    value={rewardPhone}
+                    onChange={(e) => setRewardPhone(e.target.value)}
+                    placeholder="So we can send your reward on WhatsApp"
+                  />
+                </div>
+                <Button type="submit" className="w-full gap-2" disabled={claiming}>
+                  {claiming ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" />Please wait…</>
+                  ) : (
+                    <><Gift className="h-4 w-4" />I've Submitted My Review — Scratch &amp; Win</>
+                  )}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setStep('thankyou')}
+                  className="w-full text-xs text-muted-foreground underline pt-1"
+                >
+                  Skip, no thanks
+                </button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── Scratch card reveal ── */}
+        {step === 'scratch' && reward && (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <h2 className="font-bold text-xl text-gray-900 mb-1">Scratch &amp; Reveal</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                Use your finger or mouse to scratch the card below
+              </p>
+              <ScratchCard reward={reward} onRevealed={() => setScratched(true)} />
+              {scratched && (
+                <div className="mt-6 animate-in fade-in duration-300">
+                  <p className="text-base font-semibold text-gray-900 mb-1">Congratulations! 🎉</p>
+                  <p className="text-sm text-muted-foreground mb-5">
+                    Show this screen at the store, or wait for our WhatsApp message with your coupon code.
+                  </p>
+                  <Button className="w-full" onClick={() => setStep('thankyou')}>Done</Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

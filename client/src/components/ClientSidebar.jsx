@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, MessageSquare, Inbox, BarChart3, QrCode,
-  Users, Tag, FileDown, Settings, LogOut, Wrench,
+  Users, Tag, FileDown, Settings, LogOut, Wrench, Gift, Ticket,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,8 @@ const NAV = [
   { to: '/client/qrcodes',    label: 'QR Codes',   icon: QrCode },
   { to: '/client/customers',  label: 'Customers',  icon: Users },
   { to: '/client/services',   label: 'Services',   icon: Wrench },
+  { to: '/client/rewards',    label: 'Reward Management', icon: Gift },
+  { to: '/client/scratch-card-settings', label: 'Scratch Card Settings', icon: Ticket },
   { to: '/client/categories', label: 'Categories', icon: Tag },
   { to: '/client/reports',    label: 'Reports',    icon: FileDown },
   { to: '/client/settings',   label: 'Settings',   icon: Settings },

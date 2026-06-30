@@ -125,4 +125,26 @@ export const publicAPI = {
   getClientBySlug: (slug) => API.get(`/public/client/${slug}`),
   // Track customer review journey from public review page (no auth)
   trackCustomer: (id, status) => API.patch(`/public/customer/${id}/track`, { status }),
+  // Scratch-card claim (no auth) — logs a "Pending" reward, never sends WhatsApp
+  claimReward: (data) => API.post('/rewards/claim', data),
+};
+
+// ─── Rewards: tier configuration (Scratch Card Settings) ─────────────────────
+export const rewardConfigAPI = {
+  getAll:       (params) => API.get('/rewards/configs', { params }),
+  getMonths:    ()       => API.get('/rewards/configs/months'),
+  create:       (data)   => API.post('/rewards/configs', data),
+  update:       (id, data) => API.put(`/rewards/configs/${id}`, data),
+  delete:       (id)     => API.delete(`/rewards/configs/${id}`),
+  toggle:       (id)     => API.patch(`/rewards/configs/${id}/toggle`),
+  reset:        (data)   => API.post('/rewards/configs/reset', data),
+};
+
+// ─── Rewards: transactions (Reward Management) ────────────────────────────────
+export const rewardsAPI = {
+  getAll:             (params) => API.get('/rewards/transactions', { params }),
+  getById:            (id)     => API.get(`/rewards/transactions/${id}`),
+  markWhatsappOpened: (id)     => API.patch(`/rewards/transactions/${id}/whatsapp-opened`),
+  markSent:           (id)     => API.patch(`/rewards/transactions/${id}/mark-sent`),
+  updateStatus:       (id, status) => API.patch(`/rewards/transactions/${id}/status`, { status }),
 };

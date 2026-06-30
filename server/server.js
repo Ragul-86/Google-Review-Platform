@@ -22,6 +22,7 @@ const customerRoutes          = require('./routes/customers');
 const whatsappTemplateRoutes  = require('./routes/whatsappTemplates');
 const serviceRoutes           = require('./routes/services');
 const contactRoutes           = require('./routes/contact');
+const rewardRoutes            = require('./routes/rewards');
 
 // Connect DB then auto-seed superadmin if none exists
 connectDB().then(async () => {
@@ -120,6 +121,7 @@ app.use('/api/customers',          customerRoutes);
 app.use('/api/whatsapp-templates', whatsappTemplateRoutes);
 app.use('/api/services',           serviceRoutes);
 app.use('/api/contact',            contactRoutes);
+app.use('/api/rewards',            rewardRoutes);
 
 // Public: Track customer review journey (called from review page — no auth needed)
 app.patch('/api/public/customer/:id/track', require('express-async-handler')(async (req, res) => {
@@ -156,12 +158,14 @@ app.get('/api/public/client/:slug', require('express-async-handler')(async (req,
   const Client   = require('./models/Client');
   const Category = require('./models/Category');
   const Service  = require('./models/Service');
+  const { hasActiveRewardProgram } = require('./controllers/rewardClaimController');
   const client = await Client.findOne({ slug: req.params.slug, status: 'active' })
     .select('businessName businessLogo googleReviewLink address slug businessCategory');
   if (!client) { res.status(404); return res.json({ success: false, message: 'Business not found' }); }
   const categories = await Category.find({ clientId: client._id, isEnabled: true }).sort({ sortOrder: 1 });
   const services   = await Service.find({ clientId: client._id, status: 'active' }).sort({ name: 1 });
-  res.json({ success: true, data: { client, categories, services } });
+  const rewardsEnabled = await hasActiveRewardProgram(client._id);
+  res.json({ success: true, data: { client: { ...client.toObject(), rewardsEnabled }, categories, services } });
 }));
 
 // Error handling

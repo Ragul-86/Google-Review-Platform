@@ -30,6 +30,8 @@ import ClientQRCodes from '@/pages/client/QRCodes';
 import ClientAnalytics from '@/pages/client/Analytics';
 import ClientCustomers  from '@/pages/client/Customers';
 import ClientServices   from '@/pages/client/Services';
+import ScratchCardSettings from '@/pages/client/ScratchCardSettings';
+import RewardManagement from '@/pages/client/RewardManagement';
 import ClientCategories from '@/pages/client/Categories';
 import ClientReports from '@/pages/client/Reports';
 import ClientSettings from '@/pages/client/Settings';
@@ -90,6 +92,8 @@ export default function App() {
                   <Route path="/client/qrcodes"    element={<ClientQRCodes />} />
                   <Route path="/client/customers"  element={<ClientCustomers />} />
                   <Route path="/client/services"   element={<ClientServices />} />
+                  <Route path="/client/rewards" element={<RewardManagement />} />
+                  <Route path="/client/scratch-card-settings" element={<ScratchCardSettings />} />
                   <Route path="/client/analytics" element={<ClientAnalytics />} />
                   <Route path="/client/categories" element={<ClientCategories />} />
                   <Route path="/client/reports" element={<ClientReports />} />
