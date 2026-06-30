@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const cron = require('node-cron');
 const connectDB = require('./config/db');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
@@ -23,9 +24,9 @@ const whatsappTemplateRoutes  = require('./routes/whatsappTemplates');
 const serviceRoutes           = require('./routes/services');
 const contactRoutes           = require('./routes/contact');
 const rewardRoutes            = require('./routes/rewards');
-const reviewRequestRoutes     = require('./routes/reviewRequests');
 const { getRewardByToken, scratchReward } = require('./controllers/publicScratchController');
 const { expireOverdueRewards } = require('./utils/rewardExpiry');
+const { runMonthlyRollover } = require('./jobs/monthlyRewardRollover');
 
 // Connect DB then auto-seed superadmin if none exists
 connectDB().then(async () => {
@@ -60,6 +61,21 @@ connectDB().then(async () => {
   setInterval(() => {
     expireOverdueRewards().catch((e) => console.error('Reward expiry sweep error (non-fatal):', e.message));
   }, 24 * 60 * 60 * 1000);
+
+  // Automatic Monthly Scratch Card Rollover: catch up immediately at boot
+  // (covers the server being offline exactly at a month boundary — this
+  // call is fully idempotent, so it's a safe no-op if the month has
+  // already been rolled over), then schedule it to run automatically at
+  // 00:00 server time on the 1st of every month going forward. No manual
+  // action is ever required for a client's reward cycle to advance.
+  try {
+    await runMonthlyRollover();
+  } catch (e) {
+    console.error('Monthly reward rollover (boot catch-up) error (non-fatal):', e.message);
+  }
+  cron.schedule('0 0 1 * *', () => {
+    runMonthlyRollover().catch((e) => console.error('Monthly reward rollover (cron) error (non-fatal):', e.message));
+  });
 });
 
 const app = express();
@@ -140,7 +156,6 @@ app.use('/api/whatsapp-templates', whatsappTemplateRoutes);
 app.use('/api/services',           serviceRoutes);
 app.use('/api/contact',            contactRoutes);
 app.use('/api/rewards',            rewardRoutes);
-app.use('/api/review-requests',    reviewRequestRoutes);
 
 // Public: Track customer review journey (called from review page — no auth needed)
 app.patch('/api/public/customer/:id/track', require('express-async-handler')(async (req, res) => {

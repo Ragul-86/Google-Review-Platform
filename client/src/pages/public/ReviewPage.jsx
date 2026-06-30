@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { publicAPI, reviewsAPI, reviewRequestsAPI } from '@/api';
+import { publicAPI, reviewsAPI } from '@/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  Star, ExternalLink, CheckCircle2, ArrowLeft, Loader2, Copy, Check, Wrench, AlertCircle, Gift, Clock,
+  Star, ExternalLink, CheckCircle2, ArrowLeft, Loader2, Copy, Check, Wrench, AlertCircle, Gift,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -74,14 +74,6 @@ export default function ReviewPage() {
   const [name,    setName]    = useState('');
   const [contact, setContact] = useState('');
   const [message, setMessage] = useState('');
-
-  // Review verification request (positive flow only) — submitting this
-  // NEVER creates a reward and NEVER sends WhatsApp. It only records a
-  // "Pending Verification" request that the client reviews by hand on
-  // their Review Verification dashboard. No name/mobile is collected here —
-  // the backend resolves contact details from the existing Customer record
-  // (via ?c=customerId) when available.
-  const [claiming, setClaiming] = useState(false);
 
   const qrToken    = new URLSearchParams(window.location.search).get('qr');
   const customerId = new URLSearchParams(window.location.search).get('c');
@@ -232,37 +224,11 @@ export default function ReviewPage() {
 
     // Mark done — prevent resubmission
     markDone(slug);
-    // If this business has an active scratch-card reward program, let the
-    // customer claim a reward before the Thank You screen. Otherwise skip
-    // straight to Thank You as before.
-    setStep(client.rewardsEnabled ? 'confirm' : 'thankyou');
-  }
-
-  /* ── Submit a Review Verification request ────────────────────────
-     Public, no-auth endpoint. Only ever writes a "Pending Verification"
-     ReviewRequest to MongoDB — it NEVER creates a reward and NEVER
-     touches WhatsApp. No name/mobile is asked here; the server resolves
-     contact details from the existing Customer record via customerId
-     when this link came from a personalised WhatsApp invite. The client
-     manually reviews it on their Review Verification dashboard, and only
-     after approving it themselves can they press "Send Scratch Card" —
-     which itself only opens WhatsApp pre-filled; they still have to
-     press Send inside WhatsApp. */
-  async function handleClaimSubmit() {
-    setClaiming(true);
-    try {
-      await reviewRequestsAPI.create({
-        clientSlug: slug,
-        rating,
-        category: selectedCategory?.name || '',
-        customerId: customerId || undefined,
-      });
-      setStep('pendingVerification');
-    } catch {
-      toast.error('Could not submit your request. Please try again.');
-    } finally {
-      setClaiming(false);
-    }
+    // Positive review flow ends here — no confirmation click, no customer
+    // details collected. The customer simply shows their submitted Google
+    // Review to the business owner in person; the owner manually verifies
+    // it and creates the Scratch Card from the Reward Management dashboard.
+    setStep('thankyou');
   }
 
   async function handleNegativeSubmit(e) {
@@ -538,63 +504,12 @@ export default function ReviewPage() {
           </Card>
         )}
 
-        {/* ── Confirm: no name/mobile asked here ──────────────────────
-             Clicking the button below does NOT send a reward and does
-             NOT touch WhatsApp. It only creates a Pending-Verification
-             request the client reviews by hand — contact details (if
-             any) are resolved server-side from the customer's existing
-             record, not collected again on this screen. ── */}
-        {step === 'confirm' && (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mb-5">
-                <Gift className="h-8 w-8 text-amber-500" />
-              </div>
-              <h2 className="font-bold text-xl text-gray-900 mb-2">Almost Done!</h2>
-              <p className="text-sm text-muted-foreground mb-6">
-                Once you've submitted your review on Google, tap the button below. We'll verify it and
-                send your Scratch Card reward link on WhatsApp.
-              </p>
-              <Button className="w-full gap-2" disabled={claiming} onClick={handleClaimSubmit}>
-                {claiming ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" />Please wait…</>
-                ) : (
-                  <><Gift className="h-4 w-4" />I've Submitted My Review</>
-                )}
-              </Button>
-              <button
-                type="button"
-                onClick={() => setStep('thankyou')}
-                className="w-full text-xs text-muted-foreground underline pt-3"
-              >
-                Skip, no thanks
-              </button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ── Pending verification — reward is NOT revealed here.
-             The client must manually verify the review and press "Send
-             Scratch Card" themselves before any reward link is created. ── */}
-        {step === 'pendingVerification' && (
-          <Card>
-            <CardContent className="p-10 text-center">
-              <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mb-5">
-                <Clock className="h-8 w-8 text-amber-500" />
-              </div>
-              <h2 className="font-bold text-2xl text-gray-900 mb-3">Request Submitted</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
-                Thanks! Your review is being verified. Once approved, you'll receive your Scratch Card
-                reward link on WhatsApp — keep an eye on your messages.
-              </p>
-              <Button variant="outline" className="mt-6 w-full" onClick={() => setStep('thankyou')}>
-                Done
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ── Thank You page — positive AND negative both land here ── */}
+        {/* ── Thank You page — positive AND negative both land here.
+             Positive (4–5 star) flow never collects customer details and
+             never asks the customer to confirm submission — they simply
+             show their submitted Google Review to the business owner in
+             person, who manually verifies it and creates the Scratch Card
+             from the Reward Management dashboard. ── */}
         {step === 'thankyou' && (
           <Card>
             <CardContent className="p-10 text-center">
@@ -602,9 +517,21 @@ export default function ReviewPage() {
                 <CheckCircle2 className="h-9 w-9 text-green-500" />
               </div>
               <h2 className="font-bold text-2xl text-gray-900 mb-3">Thank You</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
-                Thank you for taking the time to share your feedback.
-              </p>
+              {rating >= 4 && client.rewardsEnabled ? (
+                <>
+                  <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
+                    Your review means a lot to us. Please show your submitted Google Review to our
+                    staff — they'll verify it and arrange your Scratch Card reward.
+                  </p>
+                  <div className="mx-auto mt-5 w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                    <Gift className="h-6 w-6 text-amber-500" />
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
+                  Thank you for taking the time to share your feedback.
+                </p>
+              )}
 
               {/* If popup was blocked — show manual fallback button */}
               {popupBlocked && googleLink && (

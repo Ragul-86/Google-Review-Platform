@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, MessageSquare, Inbox, BarChart3, QrCode,
-  Users, Tag, FileDown, Settings, LogOut, Wrench, Gift, Ticket, ClipboardCheck,
+  Users, Tag, FileDown, Settings, LogOut, Wrench, Gift, Ticket,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
@@ -12,17 +12,16 @@ import { toast } from 'sonner';
 
 const NAV = [
   { to: '/client/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
-  { to: '/client/reviews',    label: 'Reviews',    icon: MessageSquare },
-  { to: '/client/feedback',   label: 'Feedback',   icon: Inbox },
+  { to: '/client/rewards',    label: 'Reward Management', icon: Gift },
+  { to: '/client/scratch-card-settings', label: 'Scratch Card Rewards', icon: Ticket },
   { to: '/client/analytics',  label: 'Analytics',  icon: BarChart3 },
-  { to: '/client/qrcodes',    label: 'QR Codes',   icon: QrCode },
+  { to: '/client/reviews',    label: 'All Reviews', icon: MessageSquare },
+  { to: '/client/feedback',   label: 'Feedback',   icon: Inbox },
   { to: '/client/customers',  label: 'Customers',  icon: Users },
   { to: '/client/services',   label: 'Services',   icon: Wrench },
-  { to: '/client/review-verification', label: 'Review Verification', icon: ClipboardCheck },
-  { to: '/client/rewards',    label: 'Reward Management', icon: Gift },
-  { to: '/client/scratch-card-settings', label: 'Scratch Card Settings', icon: Ticket },
   { to: '/client/categories', label: 'Categories', icon: Tag },
-  { to: '/client/reports',    label: 'Reports',    icon: FileDown },
+  { to: '/client/reports',    label: 'Export Data', icon: FileDown },
+  { to: '/client/qrcodes',    label: 'QR Code',    icon: QrCode },
   { to: '/client/settings',   label: 'Settings',   icon: Settings },
 ];
 

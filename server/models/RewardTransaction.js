@@ -1,15 +1,16 @@
 const mongoose = require('mongoose');
 
 /* ── RewardTransaction ───────────────────────────────────────────
-   One document per scratch-card link sent to a customer. Created the
-   instant the client clicks "Send Scratch Card" in Review Verification
-   (status starts "sent" — the secure token already exists, but the
-   reward itself is NOT chosen yet). The actual reward + coupon code
-   are only assigned once the customer opens the link and scratches
-   (isScratched flips true, scratchedAt stamped, status → "scratched").
-   GETMORE never sends WhatsApp automatically — the client always
-   manually presses Send inside WhatsApp Web after this record (and the
-   wa.me link) is created. */
+   One document per scratch-card link. Created the instant the
+   business owner clicks "Create Scratch Card" in Reward Management
+   after manually verifying the customer's Google Review in person
+   (status starts "pending" — the secure token already exists, but
+   the reward itself is NOT chosen yet). The actual reward + coupon
+   code are only assigned once the customer opens the link and
+   scratches (isScratched flips true, scratchedAt stamped, status →
+   "scratched"). GETMORE never sends WhatsApp automatically — the
+   owner always manually presses Send inside WhatsApp Web after
+   clicking "Send WhatsApp" on this record. */
 const rewardTransactionSchema = new mongoose.Schema(
   {
     clientId: {
@@ -22,12 +23,6 @@ const rewardTransactionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Customer',
       default: null,
-    },
-    reviewRequestId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'ReviewRequest',
-      default: null,
-      index: true,
     },
     customerName: { type: String, required: true, trim: true, maxlength: 150 },
     phone:        { type: String, required: true, trim: true, maxlength: 30 },

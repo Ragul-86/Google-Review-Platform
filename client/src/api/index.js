@@ -127,19 +127,6 @@ export const publicAPI = {
   trackCustomer: (id, status) => API.patch(`/public/customer/${id}/track`, { status }),
 };
 
-// ─── Review Requests (Review Verification) ────────────────────────────────────
-export const reviewRequestsAPI = {
-  // Public — "I've Submitted My Review" (no auth). Never creates a reward.
-  create:           (data) => API.post('/review-requests', data),
-  // Protected — Review Verification dashboard
-  getAll:           (params) => API.get('/review-requests', { params }),
-  getById:          (id) => API.get(`/review-requests/${id}`),
-  assignCustomer:   (id, data) => API.patch(`/review-requests/${id}/assign-customer`, data),
-  approve:          (id) => API.patch(`/review-requests/${id}/approve`),
-  reject:           (id) => API.patch(`/review-requests/${id}/reject`),
-  sendScratchCard:  (id) => API.patch(`/review-requests/${id}/send-scratch-card`),
-};
-
 // ─── Public Scratch Card link (/reward/:token) ─────────────────────────────────
 export const publicScratchAPI = {
   // Read-only lookup — never mutates (except a lazy expiry sweep)
@@ -152,6 +139,8 @@ export const publicScratchAPI = {
 export const rewardConfigAPI = {
   getAll:       (params) => API.get('/rewards/configs', { params }),
   getMonths:    ()       => API.get('/rewards/configs/months'),
+  getCycleStatus: ()     => API.get('/rewards/configs/cycle-status'),
+  getHistory:   ()       => API.get('/rewards/configs/history'),
   create:       (data)   => API.post('/rewards/configs', data),
   bulkGenerate: (data)   => API.post('/rewards/configs/bulk-generate', data),
   update:       (id, data) => API.put(`/rewards/configs/${id}`, data),
@@ -164,6 +153,8 @@ export const rewardConfigAPI = {
 export const rewardsAPI = {
   getAll:             (params) => API.get('/rewards/transactions', { params }),
   getById:            (id)     => API.get(`/rewards/transactions/${id}`),
+  getCampaigns:       ()       => API.get('/rewards/campaigns'),
+  create:             (data)   => API.post('/rewards/transactions', data),
   markWhatsappOpened: (id)     => API.patch(`/rewards/transactions/${id}/whatsapp-opened`),
   markSent:           (id)     => API.patch(`/rewards/transactions/${id}/mark-sent`),
   updateStatus:       (id, status) => API.patch(`/rewards/transactions/${id}/status`, { status }),

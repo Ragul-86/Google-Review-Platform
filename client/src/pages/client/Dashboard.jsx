@@ -1,13 +1,94 @@
 import { useQuery } from '@tanstack/react-query';
-import { customersAPI } from '@/api';
+import { Link } from 'react-router-dom';
+import { customersAPI, rewardConfigAPI } from '@/api';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import {
   Users, MessageCircle, Star, MessageSquare,
-  TrendingUp, BarChart3, ArrowUpRight,
+  TrendingUp, BarChart3, ArrowUpRight, Gift, CalendarClock, CheckCircle2, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+function fmtResetDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/* ── Automatic Reward Reset widget ─────────────────────────────────
+   Surfaces the Scratch Card monthly-rollover status right on the
+   dashboard: Current Reward Month, Next Automatic Reset date, and
+   confirmation the cron-driven reset is enabled — so a client never
+   has to dig into Scratch Card Settings just to check this. */
+function RewardCycleWidget() {
+  const { data: cycle, isLoading } = useQuery({
+    queryKey: ['reward-cycle-status'],
+    queryFn: () => rewardConfigAPI.getCycleStatus().then((r) => r.data.data),
+  });
+
+  if (isLoading) return <Skeleton className="h-[88px]" />;
+  if (!cycle) return null;
+
+  if (!cycle.hasConfig) {
+    return (
+      <Link to="/client/scratch-card-settings">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
+          <CardContent className="p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                <Gift className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Set up Scratch Card Rewards</p>
+                <p className="text-xs text-gray-400">Configure reward tiers once — monthly resets happen automatically</p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
+          </CardContent>
+        </Card>
+      </Link>
+    );
+  }
+
+  return (
+    <Link to="/client/scratch-card-settings">
+      <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                <Gift className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-400">Current Reward Month</p>
+                <p className="text-sm font-bold text-gray-900">{cycle.currentMonthLabel}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                <CalendarClock className="h-5 w-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-400">Next Automatic Reset</p>
+                <p className="text-sm font-bold text-gray-900">{fmtResetDate(cycle.nextResetDate)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-400">Automatic Reset Status</p>
+                <Badge variant="success" className="mt-0.5">Enabled</Badge>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
 
 /* ── Time-based greeting ───────────────────────────────────────── */
 function getGreeting() {
@@ -130,6 +211,9 @@ export default function ClientDashboard() {
           </div>
         )}
       </div>
+
+      {/* ── Automatic Reward Reset status ───────────────────────── */}
+      <RewardCycleWidget />
 
       {/* ── KPI grid ───────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">

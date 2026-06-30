@@ -32,7 +32,6 @@ import ClientCustomers  from '@/pages/client/Customers';
 import ClientServices   from '@/pages/client/Services';
 import ScratchCardSettings from '@/pages/client/ScratchCardSettings';
 import RewardManagement from '@/pages/client/RewardManagement';
-import ReviewVerification from '@/pages/client/ReviewVerification';
 import ClientCategories from '@/pages/client/Categories';
 import ClientReports from '@/pages/client/Reports';
 import ClientSettings from '@/pages/client/Settings';
@@ -97,7 +96,6 @@ export default function App() {
                   <Route path="/client/qrcodes"    element={<ClientQRCodes />} />
                   <Route path="/client/customers"  element={<ClientCustomers />} />
                   <Route path="/client/services"   element={<ClientServices />} />
-                  <Route path="/client/review-verification" element={<ReviewVerification />} />
                   <Route path="/client/rewards" element={<RewardManagement />} />
                   <Route path="/client/scratch-card-settings" element={<ScratchCardSettings />} />
                   <Route path="/client/analytics" element={<ClientAnalytics />} />

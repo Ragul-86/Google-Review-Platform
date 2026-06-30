@@ -1,6 +1,10 @@
 const asyncHandler = require('express-async-handler');
 const RewardConfig = require('../models/RewardConfig');
-const { currentMonth, ensureMonthConfigs } = require('../utils/rewardMonth');
+const RewardTransaction = require('../models/RewardTransaction');
+const {
+  currentMonth, ensureMonthConfigs, nextMonthOf, monthToParts,
+  isCurrentMonth, isFutureMonth, isPastMonth, monthLabel,
+} = require('../utils/rewardMonth');
 
 function getClientId(req) {
   return req.user.role === 'superadmin'
@@ -16,26 +20,83 @@ function withAnalytics(doc) {
   return { ...o, remaining, distributed, progress };
 }
 
+/* Aggregate totals across a list of tier docs for a month — backs the
+   monthly-history table's summary row. */
+function summarizeTiers(configs) {
+  const totals = configs.reduce((acc, c) => {
+    acc.totalCards += c.totalCards;
+    acc.claimed += c.claimed;
+    acc.distributed += c.claimed * c.amount;
+    return acc;
+  }, { totalCards: 0, claimed: 0, distributed: 0 });
+  totals.remaining = Math.max(totals.totalCards - totals.claimed, 0);
+  totals.progress  = totals.totalCards > 0 ? Math.round((totals.claimed / totals.totalCards) * 100) : 0;
+  return totals;
+}
+
+/* Opened / Pending / Expired are never stored or reset directly — they
+   are always derived, on read, from the real RewardTransaction history
+   for that month. A brand-new month naturally starts at 0/0/0 simply
+   because no transaction documents carry that month tag yet; no record
+   is ever mutated or deleted to produce that. */
+async function transactionCounts(clientId, month) {
+  const [opened, pending, expired] = await Promise.all([
+    RewardTransaction.countDocuments({ clientId, month, isScratched: true }),
+    RewardTransaction.countDocuments({ clientId, month, rewardStatus: { $in: ['pending', 'sent'] } }),
+    RewardTransaction.countDocuments({ clientId, month, rewardStatus: 'expired' }),
+  ]);
+  return { opened, pending, expired };
+}
+
+/* Server-side-authoritative edit permission: only the current calendar
+   month may ever be mutated. Past months are permanent read-only
+   history; future months don't exist to edit yet (they're created
+   automatically by the cron rollover / boot catch-up, never early via
+   a client request). The frontend additionally disables controls for
+   non-current months for UX, but this guard is the real gate. */
+function assertEditableMonth(res, month) {
+  if (!isCurrentMonth(month)) {
+    res.status(403);
+    throw new Error(
+      isFutureMonth(month)
+        ? `${monthLabel(month)} is a future reward cycle and cannot be edited yet.`
+        : `${monthLabel(month)} is a past reward cycle and is read-only. Only the current month (${monthLabel(currentMonth())}) can be edited.`,
+    );
+  }
+}
+
 /* ── GET /api/rewards/configs?month=YYYY-MM ───────────────────────
    Lists this client's reward tiers for the given month (defaults to
-   the current month). If this month hasn't been configured yet, last
-   month's tier setup is auto-cloned forward with claimed reset to 0 —
-   this is the "monthly reset" happening automatically, while every
-   prior month's documents remain in the DB as permanent history. */
+   the current month). If the current/a past month hasn't been
+   materialized yet, last month's tier setup is auto-cloned forward
+   with claimed reset to 0 (belt-and-suspenders alongside the cron
+   rollover). Future months are never auto-created from this read
+   path — they only ever come into existence via the monthly cron
+   job, so a client can't force-create one early just by querying it. */
 const getConfigs = asyncHandler(async (req, res) => {
   const clientId = getClientId(req);
   if (!clientId) { res.status(400); throw new Error('clientId required'); }
 
   const month = req.query.month || currentMonth();
-  await ensureMonthConfigs(RewardConfig, clientId, month);
+  if (!isFutureMonth(month)) {
+    await ensureMonthConfigs(RewardConfig, clientId, month);
+  }
 
   const configs = await RewardConfig.find({ clientId, month }).sort({ amount: 1 });
-  res.json({ success: true, data: configs.map(withAnalytics), month });
+  res.json({
+    success: true,
+    data: configs.map(withAnalytics),
+    month,
+    monthLabel: monthLabel(month),
+    editable: isCurrentMonth(month),
+    isPast: isPastMonth(month),
+    isFuture: isFutureMonth(month),
+  });
 });
 
 /* ── GET /api/rewards/configs/months ───────────────────────────────
-   Distinct months that have reward history — powers a "view past
-   months" selector in Reward Analytics. */
+   Distinct months that have reward history — powers the Month
+   Selector dropdown (Current Month + Previous Months). */
 const getConfigMonths = asyncHandler(async (req, res) => {
   const clientId = getClientId(req);
   if (!clientId) { res.status(400); throw new Error('clientId required'); }
@@ -44,13 +105,74 @@ const getConfigMonths = asyncHandler(async (req, res) => {
   res.json({ success: true, data: months.sort().reverse() });
 });
 
+/* ── GET /api/rewards/configs/cycle-status ─────────────────────────
+   Powers the Client Dashboard "Automatic Reward Reset" widget:
+   Current Reward Month, Next Automatic Reset date, and confirmation
+   that automatic monthly rollover is enabled. */
+const getCycleStatus = asyncHandler(async (req, res) => {
+  const clientId = getClientId(req);
+  if (!clientId) { res.status(400); throw new Error('clientId required'); }
+
+  const month = currentMonth();
+  const upcoming = nextMonthOf(month);
+  const { year, month: mon } = monthToParts(upcoming);
+  const nextResetDate = new Date(year, mon - 1, 1, 0, 0, 0, 0);
+
+  const hasConfig = await RewardConfig.exists({ clientId });
+
+  res.json({
+    success: true,
+    data: {
+      currentMonth: month,
+      currentMonthLabel: monthLabel(month),
+      nextResetMonth: upcoming,
+      nextResetDate,
+      nextResetLabel: monthLabel(upcoming),
+      automaticResetEnabled: true,
+      hasConfig: !!hasConfig,
+    },
+  });
+});
+
+/* ── GET /api/rewards/configs/history ──────────────────────────────
+   Every month this client has reward history for (current + past),
+   each with its own tier-count, totals and transaction-derived
+   Opened/Pending/Expired counts — powers the "Previous Month
+   History" table. Read-only by nature; never mutates anything. */
+const getMonthlyHistory = asyncHandler(async (req, res) => {
+  const clientId = getClientId(req);
+  if (!clientId) { res.status(400); throw new Error('clientId required'); }
+
+  const months = (await RewardConfig.distinct('month', { clientId })).sort().reverse();
+
+  const history = await Promise.all(months.map(async (month) => {
+    const configs = await RewardConfig.find({ clientId, month });
+    const totals = summarizeTiers(configs);
+    const counts = await transactionCounts(clientId, month);
+    return {
+      month,
+      monthLabel: monthLabel(month),
+      isCurrent: isCurrentMonth(month),
+      isPast: isPastMonth(month),
+      tierCount: configs.length,
+      ...totals,
+      ...counts,
+    };
+  }));
+
+  res.json({ success: true, data: history });
+});
+
 /* ── POST /api/rewards/configs ─────────────────────────────────────
    Body: { amount, totalCards, month? } — create a new reward tier. */
 const createConfig = asyncHandler(async (req, res) => {
   const clientId = getClientId(req);
   if (!clientId) { res.status(400); throw new Error('clientId required'); }
 
-  const { amount, totalCards, month } = req.body;
+  const { amount, totalCards } = req.body;
+  const month = req.body.month || currentMonth();
+  assertEditableMonth(res, month);
+
   if (!amount || totalCards === undefined || totalCards === null || Number(totalCards) < 0) {
     res.status(400); throw new Error('amount and totalCards are required');
   }
@@ -61,7 +183,7 @@ const createConfig = asyncHandler(async (req, res) => {
     totalCards: Number(totalCards),
     claimed: 0,
     status: 'active',
-    month: month || currentMonth(),
+    month,
   });
 
   res.status(201).json({ success: true, data: withAnalytics(config) });
@@ -74,6 +196,7 @@ const updateConfig = asyncHandler(async (req, res) => {
 
   const clientId = getClientId(req);
   if (String(config.clientId) !== String(clientId)) { res.status(403); throw new Error('Not authorized'); }
+  assertEditableMonth(res, config.month);
 
   const { amount, totalCards } = req.body;
   if (amount !== undefined)     config.amount     = Number(amount);
@@ -90,6 +213,7 @@ const deleteConfig = asyncHandler(async (req, res) => {
 
   const clientId = getClientId(req);
   if (String(config.clientId) !== String(clientId)) { res.status(403); throw new Error('Not authorized'); }
+  assertEditableMonth(res, config.month);
 
   await config.deleteOne();
   res.json({ success: true, message: 'Reward tier deleted' });
@@ -102,6 +226,7 @@ const toggleConfig = asyncHandler(async (req, res) => {
 
   const clientId = getClientId(req);
   if (String(config.clientId) !== String(clientId)) { res.status(403); throw new Error('Not authorized'); }
+  assertEditableMonth(res, config.month);
 
   config.status = config.status === 'active' ? 'inactive' : 'active';
   await config.save();
@@ -110,13 +235,18 @@ const toggleConfig = asyncHandler(async (req, res) => {
 
 /* ── POST /api/rewards/configs/reset ──────────────────────────────
    "Reset Monthly Rewards" button — zeroes `claimed` on every tier for
-   the target month (defaults to current month) on demand, without
-   touching any other month's documents/history. */
+   the target month (defaults to current month, and only the current
+   month is ever allowed) on demand, without touching any other
+   month's documents/history, and without touching real customer
+   transaction history (Opened/Pending/Expired stay exactly what they
+   truthfully are — those are never deleted or mutated). */
 const resetMonth = asyncHandler(async (req, res) => {
   const clientId = getClientId(req);
   if (!clientId) { res.status(400); throw new Error('clientId required'); }
 
   const month = req.body.month || currentMonth();
+  assertEditableMonth(res, month);
+
   await RewardConfig.updateMany({ clientId, month }, { $set: { claimed: 0 } });
 
   const configs = await RewardConfig.find({ clientId, month }).sort({ amount: 1 });
@@ -136,6 +266,8 @@ const bulkGenerateConfigs = asyncHandler(async (req, res) => {
   if (!clientId) { res.status(400); throw new Error('clientId required'); }
 
   const month = req.body.month || currentMonth();
+  assertEditableMonth(res, month);
+
   const start = Number(req.body.start);
   const end = Number(req.body.end);
   const step = Number(req.body.step);
@@ -177,4 +309,5 @@ const bulkGenerateConfigs = asyncHandler(async (req, res) => {
 
 module.exports = {
   getConfigs, getConfigMonths, createConfig, updateConfig, deleteConfig, toggleConfig, resetMonth, bulkGenerateConfigs,
+  getCycleStatus, getMonthlyHistory,
 };

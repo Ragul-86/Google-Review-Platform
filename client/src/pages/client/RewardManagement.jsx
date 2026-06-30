@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { rewardsAPI } from '@/api';
+import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,16 +13,13 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/select';
 import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
-import {
-  Gift, Search, MoreVertical, Eye, CheckCircle2,
+  Gift, Search, Plus, Loader2,
   Ticket, Send, Sparkles, Award, XCircle, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -90,21 +88,42 @@ function StatCard({ icon: Icon, label, value, color, bg }) {
   );
 }
 
+/* ── WhatsApp message builder ──────────────────────────────────────
+   Exact spec template. GETMORE never sends this itself — clicking
+   "Send WhatsApp" only opens wa.me with this text pre-filled; the
+   owner still has to press Send inside WhatsApp manually. */
+function buildWhatsAppMessage({ customerName, businessName, scratchCardUrl }) {
+  return [
+    `Hi ${customerName}`,
+    `Thank you for reviewing ${businessName}.`,
+    `Your Scratch Card reward is ready.`,
+    `Click the secure link below.`,
+    scratchCardUrl,
+    `This Scratch Card can only be opened once.`,
+    `Regards`,
+    businessName,
+  ].join('\n');
+}
+
 /* ═══════════════════════════════════════════════════════════════
-   Reward Management — this is purely a tracking/redemption view now.
-   Scratch Card links are created and sent from Review Verification
-   (Approve → Send Scratch Card). By the time a transaction shows up
-   here it's already "Sent"; this page's job is to watch it become
-   "Scratched" and let the client mark it "Redeemed" once the
-   customer shows up in-store with their coupon code. ═══════════════ */
+   Reward Management — Create Scratch Card lives here. The business
+   owner manually verifies the customer's Google Review in person
+   (no digital trace), then clicks "Create Scratch Card" below and
+   fills in the customer's details. That's the only way a reward
+   transaction is ever created — nothing here is automatic. Sending
+   the link over WhatsApp is also always a manual click. ═══════════ */
 export default function RewardManagement() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const businessName = user?.client?.businessName || 'Business';
 
   const [statusTab, setStatusTab] = useState('');
   const [search, setSearch]       = useState('');
   const [dateRange, setDateRange] = useState('');
   const [page, setPage]           = useState(1);
   const [viewTarget, setViewTarget] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [form, setForm] = useState({ customerName: '', phone: '', email: '', month: '' });
   const limit = 15;
 
   const { data, isLoading } = useQuery({
@@ -114,6 +133,15 @@ export default function RewardManagement() {
     }).then((r) => r.data),
   });
 
+  const { data: campaignData } = useQuery({
+    queryKey: ['reward-campaigns'],
+    queryFn: () => rewardsAPI.getCampaigns().then((r) => r.data),
+    enabled: createOpen,
+  });
+  const campaigns = campaignData?.data ?? [];
+  // Default to the current campaign once loaded, but let the owner override.
+  const selectedMonth = form.month || campaigns.find((c) => c.isCurrent)?.month || '';
+
   const invalidate = () => qc.invalidateQueries({ queryKey: ['reward-transactions'] });
 
   const statusMut = useMutation({
@@ -121,6 +149,50 @@ export default function RewardManagement() {
     onSuccess: () => { toast.success('Reward status updated'); invalidate(); },
     onError: (e) => toast.error(e?.response?.data?.message || 'Failed to update'),
   });
+
+  const sentMut = useMutation({
+    mutationFn: (id) => rewardsAPI.markSent(id),
+    onSuccess: invalidate,
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to update'),
+  });
+
+  const createMut = useMutation({
+    mutationFn: (payload) => rewardsAPI.create(payload).then((r) => r.data),
+    onSuccess: () => {
+      toast.success('Scratch Card created');
+      setCreateOpen(false);
+      setForm({ customerName: '', phone: '', email: '', month: '' });
+      invalidate();
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to create Scratch Card'),
+  });
+
+  function submitCreate(e) {
+    e.preventDefault();
+    if (!form.customerName.trim() || !form.phone.trim()) {
+      toast.error('Customer name and mobile number are required');
+      return;
+    }
+    createMut.mutate({
+      customerName: form.customerName.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim(),
+      month: selectedMonth || undefined,
+    });
+  }
+
+  function sendWhatsApp(reward) {
+    const phone = (reward.phone || '').replace(/\D/g, '');
+    if (!phone) { toast.error('No phone number on file for this customer'); return; }
+    const scratchCardUrl = `${window.location.origin}/reward/${reward.token}`;
+    const message = buildWhatsAppMessage({
+      customerName: reward.customerName,
+      businessName,
+      scratchCardUrl,
+    });
+    sentMut.mutate(reward._id);
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  }
 
   const rewards = data?.data ?? [];
   const counts  = data?.counts ?? {
@@ -132,7 +204,12 @@ export default function RewardManagement() {
     <div className="space-y-5">
       <PageHeader
         title="Reward Management"
-        subtitle="Track scratch-card links sent to customers and confirm in-store redemptions"
+        subtitle="Create Scratch Card rewards after verifying a customer's Google Review in person"
+        actions={
+          <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
+            <Plus className="h-4 w-4" /> Create Scratch Card
+          </Button>
+        }
       />
 
       {/* ── Scratch Card Analytics ─────────────────────────────── */}
@@ -204,7 +281,7 @@ export default function RewardManagement() {
             <div className="py-16 text-center">
               <Ticket className="h-10 w-10 text-gray-200 mx-auto mb-3" />
               <p className="font-medium text-gray-400">No rewards found</p>
-              <p className="text-sm text-gray-300 mt-1">Scratch Cards sent from Review Verification will show up here.</p>
+              <p className="text-sm text-gray-300 mt-1">Click "Create Scratch Card" above after verifying a customer's review in person.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -239,23 +316,32 @@ export default function RewardManagement() {
                         <TableCell><DaysRemaining reward={r} /></TableCell>
                         <TableCell><Badge variant={rs.variant}>{rs.label}</Badge></TableCell>
                         <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreVertical className="h-4 w-4" />
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              variant="outline" size="sm" className="h-8 px-2.5 text-xs"
+                              onClick={() => setViewTarget(r)}
+                            >
+                              👁 View Details
+                            </Button>
+                            {r.rewardStatus !== 'expired' && (
+                              <Button
+                                variant="outline" size="sm" className="h-8 px-2.5 text-xs"
+                                disabled={sentMut.isPending}
+                                onClick={() => sendWhatsApp(r)}
+                              >
+                                💬 Send WhatsApp
                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setViewTarget(r)}>
-                                <Eye className="h-4 w-4 mr-2" /> View Details
-                              </DropdownMenuItem>
-                              {canRedeem && (
-                                <DropdownMenuItem onClick={() => statusMut.mutate({ id: r._id, status: 'redeemed' })}>
-                                  <CheckCircle2 className="h-4 w-4 mr-2" /> Mark as Redeemed
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                            )}
+                            {canRedeem && (
+                              <Button
+                                variant="outline" size="sm" className="h-8 px-2.5 text-xs text-green-600 border-green-200 hover:bg-green-50"
+                                disabled={statusMut.isPending}
+                                onClick={() => statusMut.mutate({ id: r._id, status: 'redeemed' })}
+                              >
+                                ✔ Mark as Redeemed
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -333,6 +419,76 @@ export default function RewardManagement() {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Create Scratch Card dialog ──────────────────────────────
+         Only entry point for a new reward transaction. Use this
+         AFTER manually verifying the customer's Google Review in
+         person — no automated check happens here. */}
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) setForm({ customerName: '', phone: '', email: '', month: '' }); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Scratch Card</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={submitCreate} className="space-y-4">
+            <div>
+              <Label>Customer Name</Label>
+              <Input
+                className="mt-1.5"
+                placeholder="e.g. Priya Sharma"
+                value={form.customerName}
+                onChange={(e) => setForm((f) => ({ ...f, customerName: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <Label>Mobile Number</Label>
+              <Input
+                className="mt-1.5"
+                placeholder="e.g. 9876543210"
+                value={form.phone}
+                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <Label>Email <span className="text-gray-400 font-normal">(optional)</span></Label>
+              <Input
+                type="email"
+                className="mt-1.5"
+                placeholder="e.g. priya@example.com"
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>Select Reward Campaign</Label>
+              <Select
+                value={selectedMonth}
+                onValueChange={(v) => setForm((f) => ({ ...f, month: v }))}
+              >
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue placeholder={campaigns.length ? 'Choose a campaign' : 'No active campaign — set up Scratch Card Rewards first'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {campaigns.map((c) => (
+                    <SelectItem key={c.month} value={c.month}>
+                      {c.label}{c.isCurrent ? ' (Current)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={createMut.isPending || !campaigns.length} className="gap-1.5">
+                {createMut.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                Generate Secure Scratch Card Link
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

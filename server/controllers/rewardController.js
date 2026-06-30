@@ -1,6 +1,10 @@
 const asyncHandler = require('express-async-handler');
+const Client = require('../models/Client');
+const RewardConfig = require('../models/RewardConfig');
 const RewardTransaction = require('../models/RewardTransaction');
 const { expireOverdueRewards, applyLazyExpiry } = require('../utils/rewardExpiry');
+const { currentMonth, isFutureMonth, monthLabel } = require('../utils/rewardMonth');
+const { generateUniqueToken } = require('../utils/secureToken');
 
 function getClientId(req) {
   return req.user.role === 'superadmin'
@@ -114,6 +118,92 @@ const getRewardById = asyncHandler(async (req, res) => {
   res.json({ success: true, data: reward });
 });
 
+/* ── GET /api/rewards/campaigns ───────────────────────────────────
+   Powers the "Select Reward Campaign" dropdown in Create Scratch
+   Card. A "campaign" is simply a month that has an active reward-tier
+   pool configured (Scratch Card Rewards) — in practice almost always
+   just the current month, since future months are never created
+   early and past months are read-only history. Never hardcoded:
+   pulled live from RewardConfig. */
+const getCampaigns = asyncHandler(async (req, res) => {
+  const clientId = getClientId(req);
+  if (!clientId) { res.status(400); throw new Error('clientId required'); }
+
+  const months = (await RewardConfig.distinct('month', { clientId, status: 'active' }))
+    .filter((m) => !isFutureMonth(m))
+    .sort()
+    .reverse();
+
+  res.json({
+    success: true,
+    data: months.map((month) => ({
+      month,
+      label: monthLabel(month),
+      isCurrent: month === currentMonth(),
+    })),
+  });
+});
+
+/* ── POST /api/rewards/transactions ────────────────────────────────
+   "Create Scratch Card" — the ONLY place a RewardTransaction now
+   comes into existence. Fired when the business owner, having
+   manually verified the customer's Google Review in person, fills in
+   Customer Name + Mobile Number (+ optional Email) and picks a
+   Reward Campaign inside Reward Management. Generates a unique
+   one-time secure token immediately. The reward amount + coupon code
+   stay null until the customer actually scratches the card — that
+   draw always resolves against whichever month it's opened in (see
+   publicScratchController.scratchReward), so the campaign picked
+   here is just the cycle this transaction is logged under, not a
+   guarantee of which tier it draws from later.
+
+   IMPORTANT: this endpoint never contacts WhatsApp itself — sending
+   is a separate, always-manual action (see markSent below). */
+const createTransaction = asyncHandler(async (req, res) => {
+  const clientId = getClientId(req);
+  if (!clientId) { res.status(400); throw new Error('clientId required'); }
+
+  const { customerName, phone, email } = req.body;
+  if (!customerName?.trim() || !phone?.trim()) {
+    res.status(400);
+    throw new Error('Customer name and mobile number are required');
+  }
+
+  const month = req.body.month || currentMonth();
+  if (isFutureMonth(month)) {
+    res.status(400);
+    throw new Error('That reward campaign does not exist yet.');
+  }
+
+  const hasCampaign = await RewardConfig.exists({ clientId, month, status: 'active' });
+  if (!hasCampaign) {
+    res.status(400);
+    throw new Error('No active reward campaign is configured for that month yet — set up Scratch Card Rewards first.');
+  }
+
+  const token = await generateUniqueToken(RewardTransaction);
+  const transaction = await RewardTransaction.create({
+    clientId,
+    customerName: customerName.trim(),
+    phone: phone.trim(),
+    email: email?.trim() || '',
+    token,
+    rewardStatus: 'pending',
+    whatsappStatus: 'not_sent',
+    month,
+  });
+
+  const client = await Client.findById(clientId).select('businessName');
+
+  res.status(201).json({
+    success: true,
+    data: {
+      ...transaction.toObject({ virtuals: true }),
+      businessName: client?.businessName || '',
+    },
+  });
+});
+
 /* ── PATCH /api/rewards/transactions/:id/whatsapp-opened ───────────
    Fired right when the client clicks "Send WhatsApp" — purely
    telemetry recorded BEFORE window.open() runs. GETMORE itself sends
@@ -187,4 +277,6 @@ const updateRewardStatus = asyncHandler(async (req, res) => {
   res.json({ success: true, data: reward });
 });
 
-module.exports = { getRewards, getRewardById, markWhatsappOpened, markSent, updateRewardStatus };
+module.exports = {
+  getRewards, getRewardById, getCampaigns, createTransaction, markWhatsappOpened, markSent, updateRewardStatus,
+};
