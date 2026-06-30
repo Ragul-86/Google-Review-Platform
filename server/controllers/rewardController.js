@@ -273,6 +273,7 @@ const updateRewardStatus = asyncHandler(async (req, res) => {
   }
 
   reward.rewardStatus = status;
+  if (status === 'redeemed') reward.redeemedAt = new Date();
   await reward.save();
   res.json({ success: true, data: reward });
 });

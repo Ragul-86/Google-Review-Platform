@@ -38,6 +38,10 @@ const rewardTransactionSchema = new mongoose.Schema(
     isScratched: { type: Boolean, default: false },
     scratchedAt: { type: Date, default: null },
 
+    // Stamped by updateRewardStatus the instant the owner confirms, in the
+    // "Mark Reward as Redeemed" dialog, that the customer has used the coupon.
+    redeemedAt: { type: Date, default: null },
+
     reviewDate: { type: Date, default: Date.now },
     validUntil: { type: Date, default: null }, // set only once scratched (scratchedAt + 30 days)
 

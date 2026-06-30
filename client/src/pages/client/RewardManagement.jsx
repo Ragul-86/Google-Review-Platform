@@ -19,8 +19,12 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/select';
 import {
+  Tooltip, TooltipTrigger, TooltipContent, TooltipProvider,
+} from '@/components/ui/tooltip';
+import {
   Gift, Search, Plus, Loader2,
   Ticket, Send, Sparkles, Award, XCircle, ChevronLeft, ChevronRight,
+  Eye, MessageCircle, CheckCircle2, Copy,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -88,21 +92,86 @@ function StatCard({ icon: Icon, label, value, color, bg }) {
   );
 }
 
+/* ── Row (label/value line in View Details) ──────────────────────── */
+function Row({ label, value, mono, valueClassName }) {
+  return (
+    <div className="flex justify-between gap-3">
+      <span className="text-gray-500 shrink-0">{label}</span>
+      <span className={cn('text-right', mono && 'font-mono text-xs', valueClassName || 'font-medium')}>{value}</span>
+    </div>
+  );
+}
+
+/* ── Action icon button ────────────────────────────────────────────
+   Circular, color-coded, tooltip-driven action button used in the
+   Actions column. Shows a spinner in place of the icon while its
+   mutation is in flight, and — when disabled — swaps the tooltip text
+   to explain why (e.g. "Already redeemed") instead of the action name. */
+function ActionIconButton({ icon: Icon, tooltip, disabledTooltip, color, onClick, disabled, loading }) {
+  const [ripple, setRipple] = useState(false);
+  const palette = {
+    blue:   'text-blue-600 bg-blue-50 hover:bg-blue-100',
+    green:  'text-green-600 bg-green-50 hover:bg-green-100',
+    orange: 'text-orange-600 bg-orange-50 hover:bg-orange-100',
+  };
+
+  function handleClick(e) {
+    if (disabled || loading) return;
+    setRipple(true);
+    setTimeout(() => setRipple(false), 450);
+    onClick?.(e);
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={tooltip}
+          aria-disabled={disabled || loading}
+          onClick={handleClick}
+          className={cn(
+            'relative h-9 w-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden',
+            'shadow-sm transition-all duration-150 ease-out',
+            // aria-disabled (not the native `disabled` attribute) so the
+            // tooltip can still explain *why* — e.g. "Already redeemed" —
+            // on hover/focus instead of going silent like a truly disabled button.
+            'aria-disabled:opacity-35 aria-disabled:cursor-not-allowed aria-disabled:shadow-none aria-disabled:hover:scale-100',
+            !disabled && !loading && 'hover:scale-110 hover:shadow-md active:scale-95',
+            palette[color],
+          )}
+        >
+          {ripple && <span className="absolute inset-0 rounded-full bg-current opacity-20 animate-ping" />}
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{disabled && disabledTooltip ? disabledTooltip : tooltip}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 /* ── WhatsApp message builder ──────────────────────────────────────
-   Exact spec template. GETMORE never sends this itself — clicking
-   "Send WhatsApp" only opens wa.me with this text pre-filled; the
-   owner still has to press Send inside WhatsApp manually. */
-function buildWhatsAppMessage({ customerName, businessName, scratchCardUrl }) {
-  return [
+   Exact spec template. Reward / Coupon Code / Valid Until are only
+   known once the customer has actually scratched the card — omitted
+   gracefully when still null (the normal case, since Send WhatsApp is
+   only available before the card is opened). GETMORE never sends this
+   itself — clicking "Send WhatsApp" only opens wa.me with this text
+   pre-filled; the owner still has to press Send inside WhatsApp. */
+function buildWhatsAppMessage({
+  customerName, businessName, rewardAmount, couponCode, validUntil, scratchCardUrl,
+}) {
+  const lines = [
     `Hi ${customerName}`,
     `Thank you for reviewing ${businessName}.`,
-    `Your Scratch Card reward is ready.`,
-    `Click the secure link below.`,
-    scratchCardUrl,
-    `This Scratch Card can only be opened once.`,
-    `Regards`,
-    businessName,
-  ].join('\n');
+    '',
+    '🎉 Congratulations!',
+    'Your Scratch Card reward is ready.',
+  ];
+  if (rewardAmount) lines.push('', 'Reward', `₹${rewardAmount}`);
+  if (couponCode) lines.push('', 'Coupon Code', couponCode);
+  if (validUntil) lines.push('', 'Valid Until', fmtDate(validUntil));
+  lines.push('', 'Click below to reveal your Scratch Card.', scratchCardUrl, '', 'Regards', businessName);
+  return lines.join('\n');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -122,6 +191,7 @@ export default function RewardManagement() {
   const [dateRange, setDateRange] = useState('');
   const [page, setPage]           = useState(1);
   const [viewTarget, setViewTarget] = useState(null);
+  const [redeemTarget, setRedeemTarget] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ customerName: '', phone: '', email: '', month: '' });
   const limit = 15;
@@ -188,10 +258,21 @@ export default function RewardManagement() {
     const message = buildWhatsAppMessage({
       customerName: reward.customerName,
       businessName,
+      rewardAmount: reward.isScratched ? reward.rewardAmount : null,
+      couponCode: reward.isScratched ? reward.couponCode : null,
+      validUntil: reward.isScratched ? reward.validUntil : null,
       scratchCardUrl,
     });
     sentMut.mutate(reward._id);
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  }
+
+  function confirmRedeem() {
+    if (!redeemTarget) return;
+    statusMut.mutate(
+      { id: redeemTarget._id, status: 'redeemed' },
+      { onSuccess: () => setRedeemTarget(null) },
+    );
   }
 
   const rewards = data?.data ?? [];
@@ -201,6 +282,7 @@ export default function RewardManagement() {
   const pages   = data?.pages ?? 1;
 
   return (
+    <TooltipProvider delayDuration={150}>
     <div className="space-y-5">
       <PageHeader
         title="Reward Management"
@@ -290,56 +372,69 @@ export default function RewardManagement() {
                   <TableRow>
                     <TableHead>Customer Name</TableHead>
                     <TableHead>Mobile Number</TableHead>
-                    <TableHead>Reward Won</TableHead>
+                    <TableHead>Reward</TableHead>
                     <TableHead>Coupon Code</TableHead>
-                    <TableHead>Sent Date</TableHead>
                     <TableHead>Won Date</TableHead>
                     <TableHead>Expiry Date</TableHead>
                     <TableHead>Days Remaining</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rewards.map((r) => {
                     const rs = REWARD_STATUS[r.rewardStatus] ?? REWARD_STATUS.pending;
-                    const canRedeem = r.rewardStatus === 'scratched';
+                    // Send WhatsApp: available any time before the card is opened
+                    // (pending/sent); shown-but-disabled once redeemed/expired;
+                    // hidden once opened (scratched) — that's when Redeem takes over.
+                    const showWhatsApp = r.rewardStatus !== 'scratched';
+                    const disableWhatsApp = r.rewardStatus === 'redeemed' || r.rewardStatus === 'expired';
+                    const whatsAppReason = r.rewardStatus === 'redeemed' ? 'Already redeemed'
+                      : r.rewardStatus === 'expired' ? 'This reward has expired' : null;
+                    // Mark as Redeemed: only once the customer has opened the card.
+                    const showRedeem = r.rewardStatus !== 'pending' && r.rewardStatus !== 'sent';
+                    const disableRedeem = r.rewardStatus === 'redeemed' || r.rewardStatus === 'expired';
+                    const redeemReason = r.rewardStatus === 'redeemed' ? 'Already marked as redeemed'
+                      : r.rewardStatus === 'expired' ? 'This reward has expired' : null;
                     return (
                       <TableRow key={r._id}>
                         <TableCell className="font-medium text-gray-900">{r.customerName}</TableCell>
                         <TableCell className="text-gray-600">{r.phone}</TableCell>
                         <TableCell className="font-semibold text-amber-600">{r.isScratched ? `₹${r.rewardAmount}` : '—'}</TableCell>
                         <TableCell className="font-mono text-xs">{r.couponCode || '—'}</TableCell>
-                        <TableCell className="text-gray-500 text-sm whitespace-nowrap">{fmtDate(r.createdAt)}</TableCell>
                         <TableCell className="text-gray-500 text-sm whitespace-nowrap">{fmtDate(r.scratchedAt)}</TableCell>
                         <TableCell className="text-gray-500 text-sm whitespace-nowrap">{fmtDate(r.validUntil)}</TableCell>
                         <TableCell><DaysRemaining reward={r} /></TableCell>
                         <TableCell><Badge variant={rs.variant}>{rs.label}</Badge></TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Button
-                              variant="outline" size="sm" className="h-8 px-2.5 text-xs"
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <ActionIconButton
+                              icon={Eye}
+                              tooltip="View Details"
+                              color="blue"
                               onClick={() => setViewTarget(r)}
-                            >
-                              👁 View Details
-                            </Button>
-                            {r.rewardStatus !== 'expired' && (
-                              <Button
-                                variant="outline" size="sm" className="h-8 px-2.5 text-xs"
-                                disabled={sentMut.isPending}
+                            />
+                            {showWhatsApp && (
+                              <ActionIconButton
+                                icon={MessageCircle}
+                                tooltip="Send WhatsApp"
+                                disabledTooltip={whatsAppReason}
+                                color="green"
+                                disabled={disableWhatsApp}
+                                loading={sentMut.isPending && sentMut.variables === r._id}
                                 onClick={() => sendWhatsApp(r)}
-                              >
-                                💬 Send WhatsApp
-                              </Button>
+                              />
                             )}
-                            {canRedeem && (
-                              <Button
-                                variant="outline" size="sm" className="h-8 px-2.5 text-xs text-green-600 border-green-200 hover:bg-green-50"
-                                disabled={statusMut.isPending}
-                                onClick={() => statusMut.mutate({ id: r._id, status: 'redeemed' })}
-                              >
-                                ✔ Mark as Redeemed
-                              </Button>
+                            {showRedeem && (
+                              <ActionIconButton
+                                icon={CheckCircle2}
+                                tooltip="Mark as Redeemed"
+                                disabledTooltip={redeemReason}
+                                color="orange"
+                                disabled={disableRedeem}
+                                loading={statusMut.isPending && statusMut.variables?.id === r._id && statusMut.variables?.status === 'redeemed'}
+                                onClick={() => setRedeemTarget(r)}
+                              />
                             )}
                           </div>
                         </TableCell>
@@ -372,39 +467,42 @@ export default function RewardManagement() {
           <DialogHeader><DialogTitle>Reward Details</DialogTitle></DialogHeader>
           {viewTarget && (() => {
             const isExpired = viewTarget.rewardStatus === 'expired';
-            const canRedeem = viewTarget.rewardStatus === 'scratched';
+            const rs = REWARD_STATUS[viewTarget.rewardStatus] ?? REWARD_STATUS.pending;
+            const waLabel = { not_sent: 'Not Sent', opened: 'Opened (Not Sent Yet)', sent: 'Sent' }[viewTarget.whatsappStatus] || 'Not Sent';
+            const scratchCardUrl = `${window.location.origin}/reward/${viewTarget.token}`;
             return (
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between"><span className="text-gray-500">Customer Name</span><span className="font-medium">{viewTarget.customerName}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Mobile Number</span><span className="font-medium">{viewTarget.phone}</span></div>
-                {!!viewTarget.email && (
-                  <div className="flex justify-between"><span className="text-gray-500">Email</span><span className="font-medium">{viewTarget.email}</span></div>
-                )}
-                <div className="flex justify-between"><span className="text-gray-500">Reward Won</span><span className="font-semibold text-amber-600">{viewTarget.isScratched ? `₹${viewTarget.rewardAmount}` : 'Not scratched yet'}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Coupon Code</span><span className="font-mono">{viewTarget.couponCode || '—'}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Sent Date</span><span>{fmtDate(viewTarget.createdAt)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Won Date</span><span>{fmtDate(viewTarget.scratchedAt)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Expiry Date</span><span>{fmtDate(viewTarget.validUntil)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-gray-500">Days Remaining</span><DaysRemaining reward={viewTarget} /></div>
+                <Row label="Customer Name" value={viewTarget.customerName} />
+                <Row label="Mobile Number" value={viewTarget.phone} />
+                {!!viewTarget.email && <Row label="Email" value={viewTarget.email} />}
+                <Row
+                  label="Reward Amount"
+                  value={viewTarget.isScratched ? `₹${viewTarget.rewardAmount}` : 'Not opened yet'}
+                  valueClassName="font-semibold text-amber-600"
+                />
+                <Row label="Coupon Code" value={viewTarget.couponCode || '—'} mono />
 
-                <div className="pt-2 border-t">
-                  <Label className="text-gray-500 text-xs uppercase tracking-wide">Reward Status</Label>
-                  <Select
-                    value={viewTarget.rewardStatus}
-                    disabled={isExpired || !canRedeem}
-                    onValueChange={(v) => {
-                      statusMut.mutate({ id: viewTarget._id, status: v });
-                      setViewTarget((t) => ({ ...t, rewardStatus: v }));
-                    }}
-                  >
-                    <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(REWARD_STATUS).map(([k, v]) => (
-                        <SelectItem key={k} value={k} disabled={k !== viewTarget.rewardStatus && k !== 'redeemed'}>{v.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500 shrink-0">Scratch Card Link</span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="font-mono text-xs text-gray-700 truncate max-w-[200px]">{scratchCardUrl}</span>
+                    <button
+                      type="button"
+                      title="Copy link"
+                      onClick={() => { navigator.clipboard.writeText(scratchCardUrl); toast.success('Link copied'); }}
+                      className="p-1 rounded hover:bg-gray-100 shrink-0"
+                    >
+                      <Copy className="h-3.5 w-3.5 text-gray-500" />
+                    </button>
+                  </div>
                 </div>
+
+                <Row label="Won Date" value={fmtDate(viewTarget.scratchedAt)} />
+                <Row label="Expiry Date" value={fmtDate(viewTarget.validUntil)} />
+                <div className="flex justify-between items-center"><span className="text-gray-500">Days Remaining</span><DaysRemaining reward={viewTarget} /></div>
+                <div className="flex justify-between items-center"><span className="text-gray-500">Reward Status</span><Badge variant={rs.variant}>{rs.label}</Badge></div>
+                <Row label="WhatsApp Status" value={waLabel} />
+                {!!viewTarget.redeemedAt && <Row label="Redeemed Date" value={fmtDate(viewTarget.redeemedAt)} />}
 
                 {isExpired && (
                   <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">
@@ -419,6 +517,29 @@ export default function RewardManagement() {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Mark as Redeemed — confirmation dialog ──────────────────
+         Triggered only by the orange Check-Circle icon (available once
+         the customer has opened/scratched the card). Confirming stamps
+         rewardStatus = "redeemed" and redeemedAt = now in MongoDB. */}
+      <Dialog open={!!redeemTarget} onOpenChange={(o) => !o && setRedeemTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Mark Reward as Redeemed</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600">
+            Has the customer successfully redeemed this reward
+            {redeemTarget ? <> for <span className="font-medium text-gray-900">{redeemTarget.customerName}</span></> : ''}?
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRedeemTarget(null)}>Cancel</Button>
+            <Button onClick={confirmRedeem} disabled={statusMut.isPending} className="gap-1.5">
+              {statusMut.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Confirm
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -492,5 +613,6 @@ export default function RewardManagement() {
         </DialogContent>
       </Dialog>
     </div>
+    </TooltipProvider>
   );
 }
