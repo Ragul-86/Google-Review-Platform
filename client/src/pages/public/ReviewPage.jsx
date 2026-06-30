@@ -78,10 +78,9 @@ export default function ReviewPage() {
   // Review verification request (positive flow only) — submitting this
   // NEVER creates a reward and NEVER sends WhatsApp. It only records a
   // "Pending Verification" request that the client reviews by hand on
-  // their Review Verification dashboard.
-  const [rewardName,  setRewardName]  = useState('');
-  const [rewardPhone, setRewardPhone] = useState('');
-  const [rewardEmail, setRewardEmail] = useState('');
+  // their Review Verification dashboard. No name/mobile is collected here —
+  // the backend resolves contact details from the existing Customer record
+  // (via ?c=customerId) when available.
   const [claiming, setClaiming] = useState(false);
 
   const qrToken    = new URLSearchParams(window.location.search).get('qr');
@@ -242,26 +241,25 @@ export default function ReviewPage() {
   /* ── Submit a Review Verification request ────────────────────────
      Public, no-auth endpoint. Only ever writes a "Pending Verification"
      ReviewRequest to MongoDB — it NEVER creates a reward and NEVER
-     touches WhatsApp. The client manually reviews it on their Review
-     Verification dashboard, and only after approving it themselves can
-     they press "Send Scratch Card" — which itself only opens WhatsApp
-     pre-filled; they still have to press Send inside WhatsApp. */
-  async function handleClaimSubmit(e) {
-    e.preventDefault();
+     touches WhatsApp. No name/mobile is asked here; the server resolves
+     contact details from the existing Customer record via customerId
+     when this link came from a personalised WhatsApp invite. The client
+     manually reviews it on their Review Verification dashboard, and only
+     after approving it themselves can they press "Send Scratch Card" —
+     which itself only opens WhatsApp pre-filled; they still have to
+     press Send inside WhatsApp. */
+  async function handleClaimSubmit() {
     setClaiming(true);
     try {
       await reviewRequestsAPI.create({
         clientSlug: slug,
-        customerName: rewardName,
-        phone: rewardPhone,
-        email: rewardEmail,
         rating,
         category: selectedCategory?.name || '',
         customerId: customerId || undefined,
       });
       setStep('pendingVerification');
     } catch {
-      toast.error('Could not submit your details. Please try again.');
+      toast.error('Could not submit your request. Please try again.');
     } finally {
       setClaiming(false);
     }
@@ -540,60 +538,37 @@ export default function ReviewPage() {
           </Card>
         )}
 
-        {/* ── Claim reward: collect name + mobile + email for verification ──
-             Submitting this does NOT send a reward and does NOT touch
-             WhatsApp. It only creates a Pending-Verification request the
-             client reviews by hand. ── */}
+        {/* ── Confirm: no name/mobile asked here ──────────────────────
+             Clicking the button below does NOT send a reward and does
+             NOT touch WhatsApp. It only creates a Pending-Verification
+             request the client reviews by hand — contact details (if
+             any) are resolved server-side from the customer's existing
+             record, not collected again on this screen. ── */}
         {step === 'confirm' && (
           <Card>
             <CardContent className="p-8 text-center">
               <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mb-5">
                 <Gift className="h-8 w-8 text-amber-500" />
               </div>
-              <h2 className="font-bold text-xl text-gray-900 mb-2">Claim Your Reward</h2>
+              <h2 className="font-bold text-xl text-gray-900 mb-2">Almost Done!</h2>
               <p className="text-sm text-muted-foreground mb-6">
-                Submitted your review on Google? Enter your details below — once verified, you'll receive a
-                Scratch Card reward link on WhatsApp.
+                Once you've submitted your review on Google, tap the button below. We'll verify it and
+                send your Scratch Card reward link on WhatsApp.
               </p>
-              <form onSubmit={handleClaimSubmit} className="space-y-3 text-left">
-                <div>
-                  <Label>Your Name</Label>
-                  <Input required maxLength={120} value={rewardName} onChange={(e) => setRewardName(e.target.value)} />
-                </div>
-                <div>
-                  <Label>Mobile Number</Label>
-                  <Input
-                    required
-                    maxLength={20}
-                    value={rewardPhone}
-                    onChange={(e) => setRewardPhone(e.target.value)}
-                    placeholder="So we can send your reward on WhatsApp"
-                  />
-                </div>
-                <div>
-                  <Label>Email (optional)</Label>
-                  <Input
-                    type="email"
-                    maxLength={150}
-                    value={rewardEmail}
-                    onChange={(e) => setRewardEmail(e.target.value)}
-                  />
-                </div>
-                <Button type="submit" className="w-full gap-2" disabled={claiming}>
-                  {claiming ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" />Please wait…</>
-                  ) : (
-                    <><Gift className="h-4 w-4" />I've Submitted My Review</>
-                  )}
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => setStep('thankyou')}
-                  className="w-full text-xs text-muted-foreground underline pt-1"
-                >
-                  Skip, no thanks
-                </button>
-              </form>
+              <Button className="w-full gap-2" disabled={claiming} onClick={handleClaimSubmit}>
+                {claiming ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" />Please wait…</>
+                ) : (
+                  <><Gift className="h-4 w-4" />I've Submitted My Review</>
+                )}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setStep('thankyou')}
+                className="w-full text-xs text-muted-foreground underline pt-3"
+              >
+                Skip, no thanks
+              </button>
             </CardContent>
           </Card>
         )}

@@ -230,7 +230,7 @@ export default function ReviewVerification() {
                     return (
                       <TableRow key={r._id}>
                         <TableCell className="font-medium text-gray-900">{r.customerName}</TableCell>
-                        <TableCell className="text-gray-600">{r.phone}</TableCell>
+                        <TableCell className="text-gray-600">{r.phone || '—'}</TableCell>
                         <TableCell className="text-gray-600">{r.email || '—'}</TableCell>
                         <TableCell><Stars n={r.rating} /></TableCell>
                         <TableCell className="text-gray-600">{r.category || '—'}</TableCell>
@@ -296,7 +296,7 @@ export default function ReviewVerification() {
             return (
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between"><span className="text-gray-500">Customer Name</span><span className="font-medium">{viewTarget.customerName}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Mobile Number</span><span className="font-medium">{viewTarget.phone}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Mobile Number</span><span className="font-medium">{viewTarget.phone || '—'}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Email</span><span className="font-medium">{viewTarget.email || '—'}</span></div>
                 <div className="flex justify-between items-center"><span className="text-gray-500">Rating</span><Stars n={viewTarget.rating} /></div>
                 <div className="flex justify-between"><span className="text-gray-500">Selected Category</span><span className="font-medium">{viewTarget.category || '—'}</span></div>

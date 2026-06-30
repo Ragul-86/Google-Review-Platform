@@ -13,20 +13,29 @@ function getClientId(req) {
 }
 
 /* ── POST /api/review-requests   (PUBLIC — no auth) ─────────────────
-   Body: { clientSlug, customerName, phone, email?, rating, category?, customerId? }
+   Body: { clientSlug, rating, category?, customerId? }
 
    Fired the instant a customer clicks "I've Submitted My Review" on
-   the public review page. This NEVER creates a reward and NEVER sends
-   WhatsApp — it only logs a Pending-Verification request that shows
-   up in the client's "Review Verification" dashboard. The client must
-   manually Approve it and then manually click "Send Scratch Card"
-   before any reward link exists. */
-const createReviewRequest = asyncHandler(async (req, res) => {
-  const { clientSlug, customerName, phone, email, rating, category, customerId } = req.body;
+   the public review page. The positive-review flow no longer asks the
+   customer for their name/mobile — when this request arrived via a
+   personalised link (?c=customerId), the contact details are resolved
+   here from the existing Customer record. If there's no customerId
+   (e.g. a generic QR poster scan with no prior customer record), the
+   request is still saved with no contact details — it just won't be
+   possible to send that one a Scratch Card later since there's no
+   phone number to WhatsApp it to.
 
-  if (!clientSlug || !customerName?.trim() || !phone?.trim()) {
+   This NEVER creates a reward and NEVER sends WhatsApp — it only logs
+   a Pending-Verification request that shows up in the client's
+   "Review Verification" dashboard. The client must manually Approve it
+   and then manually click "Send Scratch Card" before any reward link
+   exists. */
+const createReviewRequest = asyncHandler(async (req, res) => {
+  const { clientSlug, rating, category, customerId } = req.body;
+
+  if (!clientSlug) {
     res.status(400);
-    throw new Error('clientSlug, customerName and phone are required');
+    throw new Error('clientSlug is required');
   }
   const ratingNum = Number(rating);
   if (!Number.isFinite(ratingNum) || ratingNum < 1 || ratingNum > 5) {
@@ -38,17 +47,25 @@ const createReviewRequest = asyncHandler(async (req, res) => {
   if (!client) { res.status(404); throw new Error('Business not found'); }
 
   let resolvedCustomerId = null;
+  let resolvedName  = 'Anonymous Customer';
+  let resolvedPhone = '';
+  let resolvedEmail = '';
   if (customerId) {
-    const cust = await Customer.findById(customerId).select('_id clientId');
-    if (cust && String(cust.clientId) === String(client._id)) resolvedCustomerId = cust._id;
+    const cust = await Customer.findById(customerId).select('_id clientId name phone email');
+    if (cust && String(cust.clientId) === String(client._id)) {
+      resolvedCustomerId = cust._id;
+      resolvedName  = cust.name  || resolvedName;
+      resolvedPhone = cust.phone || resolvedPhone;
+      resolvedEmail = cust.email || resolvedEmail;
+    }
   }
 
   const reviewRequest = await ReviewRequest.create({
     clientId: client._id,
     customerId: resolvedCustomerId,
-    customerName: customerName.trim(),
-    phone: phone.trim(),
-    email: email?.trim() || '',
+    customerName: resolvedName,
+    phone: resolvedPhone,
+    email: resolvedEmail,
     rating: ratingNum,
     category: category?.trim() || '',
     reviewDate: new Date(),

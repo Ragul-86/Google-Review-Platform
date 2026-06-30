@@ -22,8 +22,12 @@ const reviewRequestSchema = new mongoose.Schema(
       default: null,
     },
 
-    customerName: { type: String, required: true, trim: true, maxlength: 150 },
-    phone:        { type: String, required: true, trim: true, maxlength: 30 },
+    // Positive review flow no longer asks the customer for these — they are
+    // resolved server-side from the Customer record (via customerId) when
+    // available, or left blank for anonymous QR-poster scans with no prior
+    // customer record. Not required so anonymous submissions can still save.
+    customerName: { type: String, default: 'Anonymous Customer', trim: true, maxlength: 150 },
+    phone:        { type: String, default: '', trim: true, maxlength: 30 },
     email:        { type: String, default: '', trim: true, maxlength: 150 },
 
     rating:   { type: Number, required: true, min: 1, max: 5 },
