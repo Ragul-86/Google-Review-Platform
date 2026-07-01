@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/table';
 import {
   Gift, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Loader2, RotateCcw, Ticket, Layers, Save,
-  CalendarClock, CheckCircle2, History, Lock,
+  CalendarClock, CheckCircle2, History, Lock, ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -88,6 +88,9 @@ export default function ScratchCardSettings() {
   const [form, setForm]             = useState(EMPTY);
   const [editForm, setEditForm]     = useState(EMPTY);
   const [bulkForm, setBulkForm]     = useState(EMPTY_BULK);
+  // Generate Tiers — two-step: 'form' (range inputs) → 'preview' (editable tier rows)
+  const [bulkStep, setBulkStep]           = useState('form');
+  const [generatedTiers, setGeneratedTiers] = useState([]); // [{ amount, totalCards }]
   // Per-tier card-count edits, keyed by tier _id — pending until "Save All"
   const [counts, setCounts]         = useState({});
 
@@ -175,23 +178,32 @@ export default function ScratchCardSettings() {
     onError: (e) => toast.error(e?.response?.data?.message || 'Failed to reset'),
   });
 
-  // ── Bulk tier generation: Start/End/Step → auto-creates ₹10/₹20/.../₹100
-  // style tiers in one go. Existing amounts for the month are skipped, never
-  // duplicated or overwritten.
-  const bulkGenerateMut = useMutation({
-    mutationFn: rewardConfigAPI.bulkGenerate,
-    onSuccess: (res) => {
-      const { created = 0, skipped = 0 } = res.data ?? {};
+  // ── Bulk save: persist each generated tier (amount + totalCards) individually.
+  // Uses Promise.allSettled so a duplicate rejection doesn't abort the rest.
+  const bulkSaveMut = useMutation({
+    mutationFn: async () => {
+      const results = await Promise.allSettled(
+        generatedTiers.map((t) =>
+          rewardConfigAPI.create({ amount: t.amount, totalCards: Number(t.totalCards) || 0, month }),
+        ),
+      );
+      const created = results.filter((r) => r.status === 'fulfilled').length;
+      const skipped = results.filter((r) => r.status === 'rejected').length;
+      return { created, skipped };
+    },
+    onSuccess: ({ created, skipped }) => {
       toast.success(
         skipped > 0
-          ? `Generated ${created} tier${created === 1 ? '' : 's'} (${skipped} already existed)`
-          : `Generated ${created} tier${created === 1 ? '' : 's'}`,
+          ? `Saved ${created} tier${created === 1 ? '' : 's'} (${skipped} already existed or failed)`
+          : `Saved ${created} reward tier${created === 1 ? '' : 's'}`,
       );
       setBulkOpen(false);
       setBulkForm(EMPTY_BULK);
+      setGeneratedTiers([]);
+      setBulkStep('form');
       invalidate();
     },
-    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to generate tiers'),
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to save tiers'),
   });
 
   // ── Save All: bulk-persist every pending per-tier card-count edit at once
@@ -576,56 +588,190 @@ export default function ScratchCardSettings() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Generate Tiers dialog — bulk tier generation by numeric range ──
-           e.g. Start=10, End=100, Step=10 → auto-creates ₹10, ₹20, … ₹100.
-           Card counts default to 0 — fill them in below and Save All. ── */}
-      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Generate Reward Tiers — {formatMonthLabel(month)}</DialogTitle></DialogHeader>
-          <div className="space-y-3 mt-2">
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <Label>Start (₹)</Label>
-                <Input type="number" min="0" value={bulkForm.start} onChange={(e) => handleBulkField('start', e.target.value)} placeholder="10" />
+      {/* ── Generate Tiers dialog ─────────────────────────────────────────────
+           Two-step flow:
+           Step 1 — "form"    : Enter Start / End / Step, click Generate Tiers
+           Step 2 — "preview" : Editable table of reward amounts + Total Cards
+                                per row, then Save Reward Tiers persists all.
+        ─────────────────────────────────────────────────────────────────── */}
+      <Dialog
+        open={bulkOpen}
+        onOpenChange={(o) => {
+          setBulkOpen(o);
+          if (!o) { setBulkForm(EMPTY_BULK); setGeneratedTiers([]); setBulkStep('form'); }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {bulkStep === 'preview' ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setBulkStep('form')}
+                    className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors shrink-0"
+                    title="Back to range inputs"
+                  >
+                    <ArrowLeft className="h-4 w-4 text-gray-500" />
+                  </button>
+                  Generate Reward Tiers — {formatMonthLabel(month)}
+                </div>
+              ) : (
+                `Generate Reward Tiers — ${formatMonthLabel(month)}`
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {bulkStep === 'form' ? (
+            /* ── Step 1: Range inputs ─────────────────────────────── */
+            <div className="space-y-4 mt-2">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium">Start (₹)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={bulkForm.start}
+                    onChange={(e) => handleBulkField('start', e.target.value)}
+                    placeholder="10"
+                  />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium">End (₹)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={bulkForm.end}
+                    onChange={(e) => handleBulkField('end', e.target.value)}
+                    placeholder="100"
+                  />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-sm font-medium">Step (₹)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={bulkForm.step}
+                    onChange={(e) => handleBulkField('step', e.target.value)}
+                    placeholder="10"
+                  />
+                </div>
               </div>
-              <div>
-                <Label>End (₹)</Label>
-                <Input type="number" min="0" value={bulkForm.end} onChange={(e) => handleBulkField('end', e.target.value)} placeholder="100" />
-              </div>
-              <div>
-                <Label>Step (₹)</Label>
-                <Input type="number" min="1" value={bulkForm.step} onChange={(e) => handleBulkField('step', e.target.value)} placeholder="10" />
-              </div>
-            </div>
-            {(() => {
-              const s = Number(bulkForm.start);
-              const e = Number(bulkForm.end);
-              const st = Number(bulkForm.step);
-              if (!Number.isFinite(s) || !Number.isFinite(e) || !Number.isFinite(st) || st <= 0 || e < s) return null;
-              const count = Math.floor((e - s) / st) + 1;
-              return (
-                <p className="text-xs text-gray-500">
-                  Will create up to {count} tier{count === 1 ? '' : 's'}: ₹{s}, ₹{Math.min(s + st, e)}{count > 2 ? ', …' : ''}{count > 1 ? `, ₹${e}` : ''}.
-                  Existing tiers for this month are skipped. New tiers start at 0 cards — set counts after generating.
-                </p>
-              );
-            })()}
-            <Button
-              className="w-full gap-2"
-              disabled={bulkGenerateMut.isPending}
-              onClick={() => {
+
+              {/* Live preview hint */}
+              {(() => {
                 const s = Number(bulkForm.start);
                 const e = Number(bulkForm.end);
                 const st = Number(bulkForm.step);
-                if (!Number.isFinite(s) || !Number.isFinite(e) || !Number.isFinite(st) || st <= 0 || e < s) {
-                  return toast.error('Enter a valid Start, End and Step (Step > 0, End ≥ Start)');
-                }
-                bulkGenerateMut.mutate({ start: s, end: e, step: st, month });
-              }}
-            >
-              {bulkGenerateMut.isPending ? <><Loader2 className="h-4 w-4 animate-spin" />Generating…</> : <><Layers className="h-4 w-4" />Generate Tiers</>}
-            </Button>
-          </div>
+                if (!bulkForm.start || !bulkForm.end || !bulkForm.step) return null;
+                if (!Number.isFinite(s) || !Number.isFinite(e) || !Number.isFinite(st) || st <= 0 || e < s) return null;
+                const count = Math.floor((e - s) / st) + 1;
+                const preview = [];
+                for (let a = s; a <= e + 0.0001 && preview.length < 4; a += st) preview.push(Math.round(a));
+                return (
+                  <div className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2.5">
+                    <p className="text-xs text-amber-700 font-medium mb-0.5">{count} tiers will be generated</p>
+                    <p className="text-xs text-amber-600">
+                      ₹{preview.join(', ₹')}{count > 4 ? `, … ₹${Math.round(e)}` : ''}
+                    </p>
+                  </div>
+                );
+              })()}
+
+              <p className="text-xs text-gray-400">
+                You'll set the card count for each reward amount on the next step.
+              </p>
+
+              <Button
+                className="w-full gap-2"
+                onClick={() => {
+                  const s  = Number(bulkForm.start);
+                  const e  = Number(bulkForm.end);
+                  const st = Number(bulkForm.step);
+                  if (!Number.isFinite(s) || !Number.isFinite(e) || !Number.isFinite(st) || st <= 0 || e < s || s < 0) {
+                    return toast.error('Enter a valid Start, End and Step (Step > 0, End ≥ Start ≥ 0)');
+                  }
+                  const amounts = [];
+                  for (let a = s; a <= e + 0.0001; a += st) amounts.push(Math.round(a));
+                  setGeneratedTiers(amounts.map((a) => ({ amount: a, totalCards: '' })));
+                  setBulkStep('preview');
+                }}
+              >
+                <Layers className="h-4 w-4" /> Generate Tiers
+              </Button>
+            </div>
+          ) : (
+            /* ── Step 2: Editable tier table ─────────────────────── */
+            <div className="space-y-4 mt-2">
+
+              {/* Summary badge */}
+              <div className="flex items-center justify-between rounded-lg border border-amber-100 bg-amber-50 px-3 py-2.5">
+                <p className="text-sm font-semibold text-amber-700">
+                  {generatedTiers.length} reward tier{generatedTiers.length === 1 ? '' : 's'} generated
+                </p>
+                <span className="text-xs text-amber-500">Enter card counts below</span>
+              </div>
+
+              {/* Table header */}
+              <div className="grid grid-cols-[1fr_130px] gap-3 px-1 pb-2 border-b border-gray-100">
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Reward Amount</p>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Cards</p>
+              </div>
+
+              {/* Scrollable tier rows */}
+              <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1 -mr-1">
+                {generatedTiers.map((tier, idx) => (
+                  <div
+                    key={tier.amount}
+                    className="grid grid-cols-[1fr_130px] gap-3 items-center rounded-lg px-1 py-1 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="h-7 w-7 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0">
+                        <Ticket className="h-3.5 w-3.5 text-amber-500" />
+                      </span>
+                      <span className="font-semibold text-gray-900 text-sm">₹{tier.amount}</span>
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={tier.totalCards}
+                      onChange={(e) =>
+                        setGeneratedTiers((prev) =>
+                          prev.map((t, i) => (i === idx ? { ...t, totalCards: e.target.value } : t)),
+                        )
+                      }
+                      className="h-8 text-center font-medium"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Auto-set note */}
+              <p className="text-xs text-gray-400 border-t border-gray-100 pt-3">
+                Remaining Cards = Total Cards &nbsp;·&nbsp; Claimed = 0 &nbsp;·&nbsp; Distributed = ₹0
+                <br />These are set automatically on save.
+              </p>
+
+              {/* Save button */}
+              <Button
+                className="w-full gap-2"
+                disabled={bulkSaveMut.isPending}
+                onClick={() => {
+                  const invalid = generatedTiers.some(
+                    (t) => t.totalCards === '' || isNaN(Number(t.totalCards)) || Number(t.totalCards) < 0,
+                  );
+                  if (invalid) return toast.error('Enter a valid card count (≥ 0) for every reward tier');
+                  bulkSaveMut.mutate();
+                }}
+              >
+                {bulkSaveMut.isPending ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" />Saving…</>
+                ) : (
+                  <><Save className="h-4 w-4" />Save Reward Tiers</>
+                )}
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
