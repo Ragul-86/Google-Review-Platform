@@ -299,8 +299,10 @@ export default function ClientCustomers() {
 
   /* ── Mutations ────────────────────────────────────────────── */
   const invalidate = useCallback(() => {
-    qc.invalidateQueries({ queryKey: ['customers'] });
-    qc.invalidateQueries({ queryKey: ['customer-analytics'] });
+    // Force immediate refetch of every active customers query (any search/page
+    // combination that is currently mounted) so all cached pages stay in sync.
+    qc.invalidateQueries({ queryKey: ['customers'], refetchType: 'active' });
+    qc.invalidateQueries({ queryKey: ['customer-analytics'], refetchType: 'active' });
   }, [qc]);
 
   const createMut = useMutation({
@@ -308,29 +310,78 @@ export default function ClientCustomers() {
       ...payload,
       service: payload.service,   // controller maps this → serviceName
     }),
-    onSuccess: () => {
-      toast.success('Customer added');
+    onSuccess: (response) => {
+      const newCustomer = response?.data?.data;
+
+      // ── Instant UI update ──────────────────────────────────────────────
+      // Optimistically prepend the new customer to the top of the currently
+      // visible page so the table updates without waiting for the refetch.
+      if (newCustomer) {
+        qc.setQueryData(['customers', search, page], (old) => {
+          if (!old) return old;
+          const updatedData  = [newCustomer, ...(old.data ?? [])].slice(0, 20);
+          const updatedTotal = (old.total ?? 0) + 1;
+          return {
+            ...old,
+            data:  updatedData,
+            total: updatedTotal,
+            pages: Math.ceil(updatedTotal / 20),
+          };
+        });
+
+        // Also bump the analytics counter instantly
+        qc.setQueryData(['customer-analytics'], (old) =>
+          old ? { ...old, totalCustomers: (old.totalCustomers ?? 0) + 1 } : old,
+        );
+      }
+
+      // ── Background sync ────────────────────────────────────────────────
+      // Refetch from the server to confirm data is in sync (handles edge
+      // cases like duplicate detection, server-side field transforms, etc.)
+      invalidate();
+
+      toast.success('Customer added successfully.');
       setAddOpen(false);
       setForm(EMPTY_FORM);
-      invalidate();
     },
-    onError: (e) => toast.error(e?.response?.data?.message || 'Failed'),
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to add customer'),
   });
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => customersAPI.update(id, data),
-    onSuccess: () => {
-      toast.success('Customer updated');
-      setEditCustomer(null);
+    onSuccess: (response) => {
+      const updated = response?.data?.data;
+      // Instantly patch the updated customer in-place across all cached pages
+      if (updated) {
+        qc.setQueriesData({ queryKey: ['customers'] }, (old) => {
+          if (!old?.data) return old;
+          return { ...old, data: old.data.map((c) => (c._id === updated._id ? updated : c)) };
+        });
+      }
       invalidate();
+      toast.success('Customer updated successfully.');
+      setEditCustomer(null);
     },
-    onError: (e) => toast.error(e?.response?.data?.message || 'Failed'),
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to update customer'),
   });
 
   const deleteMut = useMutation({
     mutationFn: customersAPI.delete,
-    onSuccess: () => { toast.success('Deleted'); invalidate(); },
-    onError: (e) => toast.error(e?.response?.data?.message || 'Failed'),
+    onSuccess: (_, deletedId) => {
+      // Remove the deleted customer instantly from all cached pages
+      qc.setQueriesData({ queryKey: ['customers'] }, (old) => {
+        if (!old?.data) return old;
+        const updatedData  = old.data.filter((c) => c._id !== deletedId);
+        const updatedTotal = Math.max((old.total ?? 1) - 1, 0);
+        return { ...old, data: updatedData, total: updatedTotal, pages: Math.ceil(updatedTotal / 20) || 1 };
+      });
+      qc.setQueryData(['customer-analytics'], (old) =>
+        old ? { ...old, totalCustomers: Math.max((old.totalCustomers ?? 1) - 1, 0) } : old,
+      );
+      invalidate();
+      toast.success('Customer deleted.');
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to delete customer'),
   });
 
   const waMut = useMutation({
