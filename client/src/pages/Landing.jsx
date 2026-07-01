@@ -290,6 +290,297 @@ function ContactForm() {
   );
 }
 
+/* ─── Scratch Card Illustration ─────────────────────────────────── */
+function ScratchCardIllustration() {
+  const particles = [
+    { x: -82, y: -62, s: 6, d: 0 },
+    { x: 110, y: -52, s: 8, d: 0.5 },
+    { x: -92, y: 80,  s: 5, d: 1   },
+    { x: 118, y: 96,  s: 6, d: 1.5 },
+    { x: 28,  y: -88, s: 4, d: 0.8 },
+    { x: -48, y: 142, s: 5, d: 1.2 },
+  ];
+  return (
+    <div style={{ position: 'relative', width: '100%', height: 380, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+      {/* Ambient glow */}
+      <div style={{ position: 'absolute', width: 260, height: 260, borderRadius: '50%', background: `radial-gradient(ellipse,${GOLD}1c,transparent 68%)`, filter: 'blur(36px)', pointerEvents: 'none' }} />
+
+      {/* Left mini card */}
+      <motion.div
+        animate={{ y: [0, -8, 0] }}
+        transition={{ repeat: Infinity, duration: 5, ease: 'easeInOut', delay: 0.8 }}
+        style={{
+          position: 'absolute', left: 'calc(50% - 160px)', top: 'calc(50% - 88px)',
+          width: 128, borderRadius: 14, overflow: 'hidden',
+          background: '#1c1c1f', border: `1px solid ${GOLD}22`,
+          boxShadow: '0 12px 32px rgba(0,0,0,0.55)',
+          rotate: -9, opacity: 0.72, zIndex: 1,
+        }}
+      >
+        <div style={{ background: `linear-gradient(135deg,${GOLD}88,#D9770699)`, padding: '10px 14px 8px' }}>
+          <p style={{ fontSize: 8, fontWeight: 800, color: DARK, letterSpacing: '0.12em', opacity: 0.75 }}>GETMORE</p>
+          <p style={{ fontSize: 13, fontWeight: 900, color: DARK }}>Scratch &amp; Win</p>
+        </div>
+        <div style={{ padding: '12px 14px 14px', textAlign: 'center' }}>
+          <p style={{ fontSize: 24, fontWeight: 900, color: GOLD }}>₹50</p>
+          <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>OFF on next visit</p>
+        </div>
+      </motion.div>
+
+      {/* Right mini card */}
+      <motion.div
+        animate={{ y: [0, -10, 0] }}
+        transition={{ repeat: Infinity, duration: 4.2, ease: 'easeInOut', delay: 1.4 }}
+        style={{
+          position: 'absolute', left: 'calc(50% + 30px)', top: 'calc(50% - 96px)',
+          width: 128, borderRadius: 14, overflow: 'hidden',
+          background: '#1c1c1f', border: `1px solid ${GOLD}22`,
+          boxShadow: '0 12px 32px rgba(0,0,0,0.55)',
+          rotate: 9, opacity: 0.65, zIndex: 1,
+        }}
+      >
+        <div style={{ background: `linear-gradient(135deg,${GOLD}77,#D9770688)`, padding: '10px 14px 8px' }}>
+          <p style={{ fontSize: 8, fontWeight: 800, color: DARK, letterSpacing: '0.12em', opacity: 0.75 }}>GETMORE</p>
+          <p style={{ fontSize: 13, fontWeight: 900, color: DARK }}>Scratch &amp; Win</p>
+        </div>
+        <div style={{ padding: '12px 14px 14px', textAlign: 'center' }}>
+          <p style={{ fontSize: 24, fontWeight: 900, color: GOLD }}>₹200</p>
+          <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>OFF on next visit</p>
+        </div>
+      </motion.div>
+
+      {/* Main floating card */}
+      <motion.div
+        animate={{ y: [0, -14, 0] }}
+        transition={{ repeat: Infinity, duration: 4.5, ease: 'easeInOut' }}
+        style={{
+          position: 'relative', zIndex: 3,
+          width: 200, borderRadius: 20, overflow: 'hidden',
+          boxShadow: `0 32px 64px rgba(0,0,0,0.62), 0 0 0 1px ${GOLD}2a, 0 0 44px ${GOLD}14`,
+        }}
+      >
+        {/* Gold top band */}
+        <div style={{ background: `linear-gradient(135deg,${GOLD} 0%,#F59E0B 60%,${GOLD} 100%)`, padding: '16px 20px 14px', position: 'relative', overflow: 'hidden' }}>
+          <motion.div
+            animate={{ x: ['-120%', '220%'] }}
+            transition={{ repeat: Infinity, duration: 2.8, ease: 'easeInOut', repeatDelay: 2 }}
+            style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)', pointerEvents: 'none' }}
+          />
+          <p style={{ fontSize: 9, fontWeight: 800, color: DARK, letterSpacing: '0.14em', textTransform: 'uppercase', opacity: 0.68, position: 'relative', zIndex: 1 }}>GETMORE</p>
+          <p style={{ fontSize: 18, fontWeight: 900, color: DARK, letterSpacing: '-0.01em', marginTop: 3, position: 'relative', zIndex: 1 }}>Scratch &amp; Win 🎟️</p>
+        </div>
+        {/* Card body */}
+        <div style={{ background: 'linear-gradient(160deg,#1a1a1d 0%,#27272a 100%)', padding: '18px 20px 22px', position: 'relative' }}>
+          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'repeating-linear-gradient(45deg,rgba(251,191,36,0.035) 0px,rgba(251,191,36,0.035) 1px,transparent 1px,transparent 10px)', pointerEvents: 'none' }} />
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <p style={{ fontSize: 13, textAlign: 'center', letterSpacing: 3 }}>⭐⭐⭐⭐⭐</p>
+            <div style={{ textAlign: 'center', marginTop: 12 }}>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Your Reward</p>
+              <p style={{ fontSize: 38, fontWeight: 900, color: GOLD, lineHeight: 1.05, marginTop: 6, letterSpacing: '-0.02em' }}>₹100</p>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', marginTop: 4 }}>OFF on next visit</p>
+            </div>
+            <div style={{ marginTop: 16, background: `${GOLD}12`, border: `1px dashed ${GOLD}44`, borderRadius: 8, padding: '7px 12px', textAlign: 'center' }}>
+              <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.32)', marginBottom: 2 }}>Coupon Code</p>
+              <p style={{ fontSize: 13, fontWeight: 800, color: GOLD, letterSpacing: '0.1em', fontFamily: 'monospace' }}>GETMORE100</p>
+            </div>
+            <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.24)', textAlign: 'center', marginTop: 12 }}>Valid for 30 days from scratch</p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Glowing particles */}
+      {particles.map((p, i) => (
+        <motion.div
+          key={i}
+          animate={{ y: [0, -7, 0], opacity: [0.35, 0.9, 0.35] }}
+          transition={{ repeat: Infinity, duration: 2.5 + i * 0.4, ease: 'easeInOut', delay: p.d }}
+          style={{
+            position: 'absolute',
+            left: `calc(50% + ${p.x}px)`, top: `calc(50% + ${p.y}px)`,
+            width: p.s, height: p.s, borderRadius: '50%',
+            background: GOLD, boxShadow: `0 0 ${p.s * 2}px ${GOLD}`,
+            zIndex: 2, pointerEvents: 'none',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ─── Scratch Card Rewards Section ──────────────────────────────── */
+function ScratchCardRewardsSection() {
+  const S   = { maxWidth: 1160, margin: '0 auto', padding: '0 24px' };
+  const SEC = { padding: '96px 0' };
+
+  const features = [
+    {
+      icon: '✅',
+      title: 'Manual Reward Approval',
+      desc: 'Business owner verifies the Google review in person and manually creates each scratch card — no automatic rewards, ever.',
+    },
+    {
+      icon: '🔒',
+      title: 'One-Time Secure Scratch Card',
+      desc: 'Each card uses a unique secure token. Once scratched, the reward is permanently revealed and the link cannot be used again.',
+    },
+    {
+      icon: '⏰',
+      title: '30-Day Reward Validity',
+      desc: 'Every reward is valid for exactly 30 days from the moment the customer scratches — creating urgency for repeat visits.',
+    },
+    {
+      icon: '📱',
+      title: 'Manual WhatsApp Sharing',
+      desc: 'Owner clicks "Send WhatsApp" which opens a pre-filled message. The owner manually presses Send — full control, zero automation.',
+    },
+    {
+      icon: '🎁',
+      title: 'Custom Reward Campaigns',
+      desc: 'Create tiered reward campaigns tailored to your business — set different amounts (e.g. ₹50, ₹100, ₹200) for different customer segments.',
+    },
+  ];
+
+  const steps = [
+    { icon: '⭐', label: 'Customer submits Google Review' },
+    { icon: '👀', label: 'Business Owner verifies the review in person' },
+    { icon: '🎟️', label: 'Owner creates Scratch Card (Name, Mobile, Campaign)' },
+    { icon: '📲', label: 'Owner opens pre-filled WhatsApp and sends manually' },
+    { icon: '📩', label: 'Customer receives Scratch Card link on WhatsApp' },
+    { icon: '🎉', label: 'Customer scratches to reveal their reward' },
+    { icon: '✅', label: 'Customer redeems reward before expiry' },
+  ];
+
+  const stats = [
+    { v: '100%', l: 'Verified Rewards' },
+    { v: '30',   l: 'Days Reward Validity' },
+    { v: '∞',    l: 'Reward Campaigns' },
+    { v: '1×',   l: 'One-Time Secure Links' },
+  ];
+
+  return (
+    <>
+      {/* ── Main two-col ── */}
+      <section style={{ ...SEC, background: '#0c0c0c', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '-15%', left: '35%', width: 560, height: 560, borderRadius: '50%', background: `${GOLD}07`, filter: 'blur(80px)', pointerEvents: 'none' }} />
+        <div style={S}>
+          <Reveal>
+            <div style={{ textAlign: 'center', marginBottom: 72 }}>
+              <Label>🎟️ Scratch Card Rewards</Label>
+              <h2 style={{ fontSize: 'clamp(26px,3.4vw,46px)', fontWeight: 900, marginTop: 18, letterSpacing: '-0.025em', lineHeight: 1.12 }}>
+                Turn Every Verified Google Review into<br /><span style={{ color: GOLD }}>an Exciting Reward</span>
+              </h2>
+              <p style={{ marginTop: 16, fontSize: 16, color: 'rgba(255,255,255,0.52)', maxWidth: 560, margin: '16px auto 0', lineHeight: 1.72 }}>
+                Reward customers with premium scratch cards after their Google review — boosting engagement, loyalty, and repeat visits to your business.
+              </p>
+            </div>
+          </Reveal>
+
+          <div className="scratch-two-col">
+            <Reveal delay={0.1}>
+              <ScratchCardIllustration />
+            </Reveal>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {features.map((f, i) => (
+                <Reveal key={f.title} delay={i * 0.08}>
+                  <div
+                    className="scratch-feature-card"
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = `${GOLD}44`; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(251,191,36,0.13)'; e.currentTarget.style.transform = 'none'; }}
+                  >
+                    <div style={{ width: 40, height: 40, borderRadius: 12, background: `${GOLD}14`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{f.icon}</div>
+                    <div>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 5 }}>{f.title}</p>
+                      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.48)', lineHeight: 1.62 }}>{f.desc}</p>
+                    </div>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 7-step flow ── */}
+      <section style={{ ...SEC }}>
+        <div style={{ maxWidth: 700, margin: '0 auto', padding: '0 24px' }}>
+          <Reveal>
+            <div style={{ textAlign: 'center', marginBottom: 56 }}>
+              <Label>How Scratch Card Rewards Work</Label>
+              <h2 style={{ fontSize: 'clamp(24px,3vw,40px)', fontWeight: 900, marginTop: 18, letterSpacing: '-0.025em' }}>
+                7 Steps from <span style={{ color: GOLD }}>Review to Reward</span>
+              </h2>
+            </div>
+          </Reveal>
+          {steps.map((step, i, arr) => (
+            <Reveal key={step.label} delay={i * 0.07}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 52, height: 52, borderRadius: 16, background: i === arr.length - 1 ? GOLD : '#27272a', border: `1px solid ${i === arr.length - 1 ? GOLD : 'rgba(255,255,255,0.08)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+                    {step.icon}
+                  </div>
+                  {i < arr.length - 1 && <div style={{ width: 2, height: 28, background: `linear-gradient(to bottom,${GOLD}55,${GOLD}18)`, margin: '2px 0' }} />}
+                </div>
+                <div style={{ flex: 1, background: '#18181b', border: `1px solid ${i === arr.length - 1 ? `${GOLD}44` : 'rgba(255,255,255,0.06)'}`, borderRadius: 14, padding: '14px 20px', marginBottom: i < arr.length - 1 ? 4 : 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: GOLD, background: `${GOLD}15`, border: `1px solid ${GOLD}30`, borderRadius: 6, padding: '2px 8px', flexShrink: 0 }}>Step {i + 1}</span>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: i === arr.length - 1 ? GOLD : '#fff' }}>{step.label}</p>
+                  </div>
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Stats + CTA ── */}
+      <section style={{ ...SEC, background: '#0c0c0c', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', bottom: '-10%', right: '8%', width: 400, height: 400, borderRadius: '50%', background: `${GOLD}06`, filter: 'blur(64px)', pointerEvents: 'none' }} />
+        <div style={S}>
+          <Reveal>
+            <div className="scratch-stats-grid">
+              {stats.map((s) => (
+                <div key={s.l} style={{ textAlign: 'center', background: '#18181b', border: `1px solid ${GOLD}1e`, borderRadius: 20, padding: '28px 16px' }}>
+                  <p style={{ fontSize: 36, fontWeight: 900, color: GOLD, lineHeight: 1 }}>{s.v}</p>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.44)', marginTop: 8 }}>{s.l}</p>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.15}>
+            <div style={{ textAlign: 'center', marginTop: 72 }}>
+              <h3 style={{ fontSize: 'clamp(22px,2.8vw,38px)', fontWeight: 900, letterSpacing: '-0.02em' }}>
+                Ready to <span style={{ color: GOLD }}>Reward Your Customers?</span>
+              </h3>
+              <p style={{ marginTop: 12, fontSize: 16, color: 'rgba(255,255,255,0.48)', maxWidth: 460, margin: '12px auto 0', lineHeight: 1.65 }}>
+                Start converting verified Google reviews into loyal repeat customers with premium scratch card rewards.
+              </p>
+              <div style={{ marginTop: 36, display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <a
+                  href="#contact"
+                  style={{ display: 'inline-flex', alignItems: 'center', background: GOLD, color: DARK, fontWeight: 800, fontSize: 15, padding: '14px 32px', borderRadius: 12, textDecoration: 'none', boxShadow: `0 8px 28px ${GOLD}40`, transition: 'all 0.2s' }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 14px 36px ${GOLD}55`; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = `0 8px 28px ${GOLD}40`; }}
+                >
+                  Get Started →
+                </a>
+                <a
+                  href="#how-it-works"
+                  style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid rgba(255,255,255,0.18)', color: '#fff', fontWeight: 600, fontSize: 15, padding: '14px 28px', borderRadius: 12, textDecoration: 'none', transition: 'all 0.2s' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.background = `${GOLD}0d`; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; e.currentTarget.style.background = 'transparent'; }}
+                >
+                  See How It Works
+                </a>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+    </>
+  );
+}
+
 /* ─── Section Label ──────────────────────────────────────────────── */
 function Label({ children }) {
   return (
@@ -502,6 +793,9 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* ══ SCRATCH CARD REWARDS ══════════════════════════════════ */}
+      <Div /><ScratchCardRewardsSection />
 
       {/* ══ FEATURES ══════════════════════════════════════════════ */}
       <Div /><section id="features" style={{ ...SEC }}>
@@ -1456,6 +1750,65 @@ export default function Landing() {
           .process-grid{ grid-template-columns: 1fr !important; }
           .process-num { font-size: 56px; top: 16px; left: 18px; }
           .process-badge { margin-top: 58px; }
+        }
+
+        /* ════════════════════════════════════════════════════════
+           SCRATCH CARD REWARDS SECTION
+        ════════════════════════════════════════════════════════ */
+
+        /* Two-column: illustration left, feature cards right */
+        .scratch-two-col {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 64px;
+          align-items: center;
+        }
+
+        /* Glassmorphism feature card */
+        .scratch-feature-card {
+          display: flex;
+          gap: 14px;
+          align-items: flex-start;
+          background: rgba(24,24,27,0.85);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(251,191,36,0.13);
+          border-radius: 16px;
+          padding: 16px 18px;
+          transition: border-color 0.2s, transform 0.2s;
+        }
+
+        /* 4-column stats */
+        .scratch-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 16px;
+        }
+
+        /* ── Tablet 768px – 1024px ── */
+        @media (max-width: 1024px) {
+          .scratch-two-col {
+            grid-template-columns: 1fr;
+            gap: 48px;
+          }
+          .scratch-stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+
+        /* ── Mobile < 768px ── */
+        @media (max-width: 767px) {
+          .scratch-stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+          }
+        }
+
+        /* ── Small mobile < 480px ── */
+        @media (max-width: 480px) {
+          .scratch-feature-card {
+            padding: 14px 14px;
+          }
         }
       `}</style>
     </div>
