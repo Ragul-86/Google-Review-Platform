@@ -149,6 +149,12 @@ export const rewardConfigAPI = {
   reset:        (data)   => API.post('/rewards/configs/reset', data),
 };
 
+// ─── Admin: Super-Admin cross-client Scratch Card Management ──────────────────
+export const adminRewardsAPI = {
+  getAll:       (params) => API.get('/rewards/admin/all',       { params }),
+  getAnalytics: ()       => API.get('/rewards/admin/analytics'),
+};
+
 // ─── Rewards: transactions (Reward Management) ────────────────────────────────
 export const rewardsAPI = {
   getAll:             (params) => API.get('/rewards/transactions', { params }),

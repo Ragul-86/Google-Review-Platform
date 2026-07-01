@@ -21,6 +21,7 @@ import AdminAnalytics from '@/pages/admin/Analytics';
 import AdminReports from '@/pages/admin/Reports';
 import AdminSettings from '@/pages/admin/Settings';
 import AdminUsers from '@/pages/admin/Users';
+import AdminScratchCardManagement from '@/pages/admin/ScratchCardManagement';
 
 // Client pages
 import ClientDashboard from '@/pages/client/Dashboard';
@@ -78,6 +79,7 @@ export default function App() {
                   <Route path="/admin/dashboard" element={<AdminDashboard />} />
                   <Route path="/admin/clients" element={<AdminClients />} />
                   <Route path="/admin/categories" element={<AdminCategories />} />
+                  <Route path="/admin/scratch-cards" element={<AdminScratchCardManagement />} />
                   <Route path="/admin/reviews" element={<AdminReviews />} />
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />
                   <Route path="/admin/reports" element={<AdminReports />} />

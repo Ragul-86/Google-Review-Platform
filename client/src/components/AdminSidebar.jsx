@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Building2, Tag, MessageSquare,
-  BarChart3, Settings, LogOut,
+  BarChart3, Settings, LogOut, Ticket,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
@@ -11,12 +11,12 @@ import {
 import { toast } from 'sonner';
 
 const NAV = [
-  { to: '/admin/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
-  { to: '/admin/clients',    label: 'Clients',     icon: Building2 },
-  { to: '/admin/categories', label: 'Categories',  icon: Tag },
-  { to: '/admin/reviews',    label: 'Reviews',     icon: MessageSquare },
-  { to: '/admin/analytics',  label: 'Analytics',   icon: BarChart3 },
-  { to: '/admin/settings',   label: 'Settings',    icon: Settings },
+  { to: '/admin/dashboard',      label: 'Dashboard',              icon: LayoutDashboard },
+  { to: '/admin/clients',        label: 'Clients',                icon: Building2 },
+  { to: '/admin/scratch-cards',  label: 'Scratch Card Management', icon: Ticket },
+  { to: '/admin/reviews',        label: 'Reviews',                icon: MessageSquare },
+  { to: '/admin/analytics',      label: 'Analytics',              icon: BarChart3 },
+  { to: '/admin/settings',       label: 'Settings',               icon: Settings },
 ];
 
 /* ════════════════════════════════════════════════════════════════════ */

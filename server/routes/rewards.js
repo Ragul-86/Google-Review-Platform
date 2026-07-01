@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { protect, superAdmin } = require('../middleware/authMiddleware');
 const {
   getConfigs, getConfigMonths, createConfig, updateConfig, deleteConfig, toggleConfig, resetMonth, bulkGenerateConfigs,
   getCycleStatus, getMonthlyHistory,
@@ -8,6 +8,9 @@ const {
 const {
   getRewards, getRewardById, getCampaigns, createTransaction, markWhatsappOpened, markSent, updateRewardStatus,
 } = require('../controllers/rewardController');
+const {
+  getAdminScratchCards, getAdminScratchCardAnalytics,
+} = require('../controllers/adminRewardController');
 
 // Protected — client / admin dashboard
 // (The public, customer-facing Scratch Card link itself is handled by the
@@ -26,6 +29,13 @@ router.put('/configs/:id',         updateConfig);
 router.delete('/configs/:id',      deleteConfig);
 router.patch('/configs/:id/toggle', toggleConfig);
 router.post('/configs/reset',      resetMonth);
+
+// Super-Admin: cross-client scratch card visibility + analytics
+// Both routes require protect (already applied above) + superAdmin middleware.
+// Clients can never reach these — the regular /transactions endpoint enforces
+// per-client data separation via getClientId() → req.user.clientId for clients.
+router.get('/admin/all',       superAdmin, getAdminScratchCards);
+router.get('/admin/analytics', superAdmin, getAdminScratchCardAnalytics);
 
 // Reward transactions (Reward Management)
 router.get('/campaigns',                          getCampaigns);
