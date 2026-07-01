@@ -211,7 +211,57 @@ const getCustomerAnalytics = asyncHandler(async (req, res) => {
   });
 });
 
+/* ── GET /api/customers/search?q= ───────────────────────────────── */
+/* Fast autocomplete used by the Create Scratch Card dialog.
+   Returns at most 10 customers (name + phone + email) matching the
+   query against name OR phone.  Minimum 1 character required. */
+const searchCustomers = asyncHandler(async (req, res) => {
+  const cId = getClientId(req);
+  if (!cId) { res.status(400); throw new Error('clientId required'); }
+
+  const q = (req.query.q || '').trim();
+  if (!q) return res.json({ success: true, data: [] });
+
+  const customers = await Customer.find({
+    clientId: cId,
+    $or: [
+      { name:  { $regex: q, $options: 'i' } },
+      { phone: { $regex: q, $options: 'i' } },
+    ],
+  })
+    .select('name phone email')
+    .sort({ createdAt: -1 })
+    .limit(10);
+
+  res.json({ success: true, data: customers });
+});
+
+/* ── POST /api/customers/quick ──────────────────────────────────── */
+/* Lightweight customer creation used by the "Add New Customer"
+   modal inside the Create Scratch Card dialog.  Only name + phone
+   are required — no service field needed here.  The customer record
+   is fully reusable in future Scratch Card creations. */
+const quickCreateCustomer = asyncHandler(async (req, res) => {
+  const { name, phone, email } = req.body;
+  if (!name || !phone) { res.status(400); throw new Error('name and phone are required'); }
+
+  const cId = getClientId(req);
+  if (!cId) { res.status(400); throw new Error('clientId required'); }
+
+  const customer = await Customer.create({
+    clientId:       cId,
+    name:           name.trim(),
+    phone:          phone.trim(),
+    email:          email ? email.trim().toLowerCase() : '',
+    serviceName:    '',
+    purposeOfVisit: '',
+  });
+
+  res.status(201).json({ success: true, data: customer });
+});
+
 module.exports = {
   getCustomers, createCustomer, updateCustomer, deleteCustomer,
   markWhatsappSent, getCustomerAnalytics,
+  searchCustomers, quickCreateCustomer,
 };

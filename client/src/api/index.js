@@ -118,6 +118,10 @@ export const customersAPI = {
   delete:          (id)     => API.delete(`/customers/${id}`),
   markWhatsapp:    (id)     => API.patch(`/customers/${id}/whatsapp-sent`),
   getAnalytics:    ()       => API.get('/customers/analytics'),
+  // Autocomplete used by Create Scratch Card dialog
+  search:          (q)      => API.get('/customers/search', { params: { q } }),
+  // Lightweight create (name + phone only — no service required)
+  quickCreate:     (data)   => API.post('/customers/quick', data),
 };
 
 // ─── Public ──────────────────────────────────────────────────────────────────

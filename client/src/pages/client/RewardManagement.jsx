@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { rewardsAPI } from '@/api';
+import { rewardsAPI, customersAPI } from '@/api';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,6 +25,7 @@ import {
   Gift, Search, Plus, Loader2,
   Ticket, Send, Sparkles, Award, XCircle, ChevronLeft, ChevronRight,
   Eye, MessageCircle, CheckCircle2, Copy,
+  UserPlus, User, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -174,6 +175,294 @@ function buildWhatsAppMessage({
   return lines.join('\n');
 }
 
+/* ── Text match highlighter ────────────────────────────────────────
+   Wraps the matched portion in a yellow <mark> so results feel
+   Stripe / HubSpot-level premium. Safe for undefined inputs. */
+function Highlight({ text = '', query = '' }) {
+  if (!query || !text) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-amber-100 text-amber-900 rounded-sm px-0.5 not-italic font-semibold">
+        {text.slice(idx, idx + query.length)}
+      </mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
+/* ── Customer Search Combobox ──────────────────────────────────────
+   Stripe / HubSpot-style live autocomplete for the Create Scratch
+   Card dialog.  The owner types a name or phone number → matching
+   Customer records appear instantly → one click fills all fields.
+   "Add New Customer" (always visible at the bottom of the dropdown,
+   or via the shortcut link when idle) opens a nested modal that
+   creates a lightweight customer record and auto-selects it.
+
+   Props
+   ─────
+   value    { name, phone, email } | null   currently selected customer
+   onChange (customer | null) => void        called on select / clear    */
+function CustomerSearchCombobox({ value, onChange }) {
+  const qc         = useQueryClient();
+  const inputRef   = useRef(null);
+  const dropRef    = useRef(null);
+
+  const [query,      setQuery]      = useState('');
+  const [open,       setOpen]       = useState(false);
+  const [addOpen,    setAddOpen]    = useState(false);
+  const [newForm,    setNewForm]    = useState({ name: '', phone: '', email: '' });
+
+  /* 280 ms debounce so we don't hammer the server on every keystroke */
+  const [debouncedQ, setDebouncedQ] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(query.trim()), 280);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const { data: results = [], isFetching } = useQuery({
+    queryKey: ['customer-search', debouncedQ],
+    queryFn:  () => customersAPI.search(debouncedQ).then((r) => r.data.data),
+    enabled:  debouncedQ.length >= 1,
+    staleTime: 20_000,
+  });
+
+  const quickCreateMut = useMutation({
+    mutationFn: (data) => customersAPI.quickCreate(data).then((r) => r.data.data),
+    onSuccess: (customer) => {
+      onChange({ name: customer.name, phone: customer.phone, email: customer.email || '' });
+      setAddOpen(false);
+      setNewForm({ name: '', phone: '', email: '' });
+      setOpen(false);
+      setQuery('');
+      // Bust the search cache so the new customer shows in future lookups
+      qc.invalidateQueries({ queryKey: ['customer-search'] });
+      toast.success('Customer saved');
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to save customer'),
+  });
+
+  /* Close dropdown on outside click */
+  useEffect(() => {
+    function handleOutside(e) {
+      if (
+        dropRef.current  && !dropRef.current.contains(e.target) &&
+        inputRef.current && !inputRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  function selectCustomer(c) {
+    onChange({ name: c.name, phone: c.phone, email: c.email || '' });
+    setQuery('');
+    setOpen(false);
+  }
+
+  function clearSelection() {
+    onChange(null);
+    setQuery('');
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }
+
+  /* Pre-fill new-customer form from whatever the owner typed */
+  function openAddNew() {
+    const q      = query.trim();
+    const isPhone = /^\d+$/.test(q);
+    setNewForm({ name: isPhone ? '' : q, phone: isPhone ? q : '', email: '' });
+    setAddOpen(true);
+    setOpen(false);
+  }
+
+  function submitNewCustomer(e) {
+    e.preventDefault();
+    if (!newForm.name.trim() || !newForm.phone.trim()) {
+      toast.error('Customer name and mobile number are required');
+      return;
+    }
+    quickCreateMut.mutate(newForm);
+  }
+
+  const showDropdown = open && query.trim().length >= 1;
+
+  /* ── Selected state: compact customer card ── */
+  if (value?.name) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50/60 px-4 py-3 transition-all">
+        <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+          <User className="h-4 w-4 text-green-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-gray-900 text-sm leading-tight">{value.name}</p>
+          <p className="text-xs text-gray-500 mt-0.5 truncate">
+            {value.phone}{value.email ? ` · ${value.email}` : ''}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={clearSelection}
+          aria-label="Clear selected customer"
+          className="h-7 w-7 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-green-100 transition-colors shrink-0"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      {/* ── Search input ── */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => query.trim() && setOpen(true)}
+          onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
+          placeholder="Search by name or mobile number…"
+          className={cn(
+            'w-full h-10 pl-9 pr-9 text-sm rounded-xl',
+            'border border-input bg-background',
+            'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0',
+            'placeholder:text-muted-foreground transition-shadow',
+          )}
+        />
+        {isFetching && (
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400 pointer-events-none" />
+        )}
+      </div>
+
+      {/* ── Dropdown ── */}
+      {showDropdown && (
+        <div
+          ref={dropRef}
+          className="absolute z-[60] w-full mt-1.5 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden"
+        >
+          {/* Results list */}
+          {results.length > 0 && (
+            <div className="max-h-52 overflow-y-auto divide-y divide-gray-50">
+              {results.map((c) => (
+                <button
+                  key={c._id}
+                  type="button"
+                  onClick={() => selectCustomer(c)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
+                >
+                  <div className="h-7 w-7 rounded-full bg-gray-100 flex items-center justify-center shrink-0 text-xs font-bold text-gray-600 uppercase">
+                    {c.name?.[0] || '?'}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 leading-tight">
+                      <Highlight text={c.name} query={debouncedQ} />
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">
+                      <Highlight text={c.phone} query={debouncedQ} />
+                      {c.email && <span className="text-gray-400"> · {c.email}</span>}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Empty state */}
+          {results.length === 0 && !isFetching && (
+            <div className="px-4 py-3 text-sm text-gray-400">
+              No customers found for{' '}
+              <span className="font-medium text-gray-600">"{query.trim()}"</span>
+            </div>
+          )}
+
+          {/* Add New Customer — always at the bottom */}
+          <div className={cn('border-t border-gray-100', results.length === 0 && !isFetching && 'border-t-0')}>
+            <button
+              type="button"
+              onClick={openAddNew}
+              className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-50 active:bg-blue-100 transition-colors"
+            >
+              <div className="h-7 w-7 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                <UserPlus className="h-3.5 w-3.5" />
+              </div>
+              Add New Customer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Shortcut link when idle (no query, no selection) */}
+      {!showDropdown && (
+        <button
+          type="button"
+          onClick={() => { setNewForm({ name: '', phone: '', email: '' }); setAddOpen(true); }}
+          className="mt-2 flex items-center gap-1.5 text-xs text-gray-400 hover:text-blue-600 transition-colors"
+        >
+          <UserPlus className="h-3.5 w-3.5" />
+          Add New Customer
+        </button>
+      )}
+
+      {/* ── Add New Customer modal (nested inside Create Scratch Card dialog) ── */}
+      <Dialog
+        open={addOpen}
+        onOpenChange={(o) => { setAddOpen(o); if (!o) setNewForm({ name: '', phone: '', email: '' }); }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add New Customer</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={submitNewCustomer} className="space-y-4">
+            <div>
+              <Label>Customer Name</Label>
+              <Input
+                className="mt-1.5"
+                placeholder="e.g. Priya Sharma"
+                value={newForm.name}
+                onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <Label>Mobile Number</Label>
+              <Input
+                className="mt-1.5"
+                placeholder="e.g. 9876543210"
+                value={newForm.phone}
+                onChange={(e) => setNewForm((f) => ({ ...f, phone: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <Label>Email <span className="text-gray-400 font-normal">(optional)</span></Label>
+              <Input
+                type="email"
+                className="mt-1.5"
+                placeholder="e.g. priya@example.com"
+                value={newForm.email}
+                onChange={(e) => setNewForm((f) => ({ ...f, email: e.target.value }))}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={quickCreateMut.isPending} className="gap-1.5">
+                {quickCreateMut.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                Save Customer
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Reward Management — Create Scratch Card lives here. The business
    owner manually verifies the customer's Google Review in person
@@ -193,7 +482,8 @@ export default function RewardManagement() {
   const [viewTarget, setViewTarget] = useState(null);
   const [redeemTarget, setRedeemTarget] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({ customerName: '', phone: '', email: '', month: '' });
+  const [selectedCustomer, setSelectedCustomer] = useState(null); // { name, phone, email }
+  const [createMonth, setCreateMonth] = useState('');
   const limit = 15;
 
   const { data, isLoading } = useQuery({
@@ -210,7 +500,7 @@ export default function RewardManagement() {
   });
   const campaigns = campaignData?.data ?? [];
   // Default to the current campaign once loaded, but let the owner override.
-  const selectedMonth = form.month || campaigns.find((c) => c.isCurrent)?.month || '';
+  const selectedMonth = createMonth || campaigns.find((c) => c.isCurrent)?.month || '';
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['reward-transactions'] });
 
@@ -231,7 +521,8 @@ export default function RewardManagement() {
     onSuccess: () => {
       toast.success('Scratch Card created');
       setCreateOpen(false);
-      setForm({ customerName: '', phone: '', email: '', month: '' });
+      setSelectedCustomer(null);
+      setCreateMonth('');
       invalidate();
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'Failed to create Scratch Card'),
@@ -239,15 +530,15 @@ export default function RewardManagement() {
 
   function submitCreate(e) {
     e.preventDefault();
-    if (!form.customerName.trim() || !form.phone.trim()) {
-      toast.error('Customer name and mobile number are required');
+    if (!selectedCustomer?.name || !selectedCustomer?.phone) {
+      toast.error('Please search and select a customer first');
       return;
     }
     createMut.mutate({
-      customerName: form.customerName.trim(),
-      phone: form.phone.trim(),
-      email: form.email.trim(),
-      month: selectedMonth || undefined,
+      customerName: selectedCustomer.name,
+      phone:        selectedCustomer.phone,
+      email:        selectedCustomer.email || '',
+      month:        selectedMonth || undefined,
     });
   }
 
@@ -546,51 +837,54 @@ export default function RewardManagement() {
       {/* ── Create Scratch Card dialog ──────────────────────────────
          Only entry point for a new reward transaction. Use this
          AFTER manually verifying the customer's Google Review in
-         person — no automated check happens here. */}
-      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) setForm({ customerName: '', phone: '', email: '', month: '' }); }}>
+         person — no automated check happens here.
+         Customer search replaces the old manual-entry fields:
+         the owner searches an existing customer or adds a new one
+         inline via the nested "Add New Customer" modal. */}
+      <Dialog
+        open={createOpen}
+        onOpenChange={(o) => {
+          setCreateOpen(o);
+          if (!o) { setSelectedCustomer(null); setCreateMonth(''); }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Scratch Card</DialogTitle>
           </DialogHeader>
-          <form onSubmit={submitCreate} className="space-y-4">
+          <form onSubmit={submitCreate} className="space-y-5">
+
+            {/* Customer search / autocomplete */}
             <div>
-              <Label>Customer Name</Label>
-              <Input
-                className="mt-1.5"
-                placeholder="e.g. Priya Sharma"
-                value={form.customerName}
-                onChange={(e) => setForm((f) => ({ ...f, customerName: e.target.value }))}
-                required
+              <Label className="mb-1.5 block text-sm font-medium">
+                Customer
+              </Label>
+              <CustomerSearchCombobox
+                value={selectedCustomer}
+                onChange={setSelectedCustomer}
               />
+              {!selectedCustomer && (
+                <p className="mt-1.5 text-xs text-gray-400">
+                  Search by name or mobile · existing customers auto-fill all fields
+                </p>
+              )}
             </div>
-            <div>
-              <Label>Mobile Number</Label>
-              <Input
-                className="mt-1.5"
-                placeholder="e.g. 9876543210"
-                value={form.phone}
-                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                required
-              />
-            </div>
-            <div>
-              <Label>Email <span className="text-gray-400 font-normal">(optional)</span></Label>
-              <Input
-                type="email"
-                className="mt-1.5"
-                placeholder="e.g. priya@example.com"
-                value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              />
-            </div>
+
+            {/* Campaign select */}
             <div>
               <Label>Select Reward Campaign</Label>
               <Select
                 value={selectedMonth}
-                onValueChange={(v) => setForm((f) => ({ ...f, month: v }))}
+                onValueChange={(v) => setCreateMonth(v)}
               >
                 <SelectTrigger className="mt-1.5">
-                  <SelectValue placeholder={campaigns.length ? 'Choose a campaign' : 'No active campaign — set up Scratch Card Rewards first'} />
+                  <SelectValue
+                    placeholder={
+                      campaigns.length
+                        ? 'Choose a campaign'
+                        : 'No active campaign — set up Scratch Card Rewards first'
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {campaigns.map((c) => (
@@ -603,8 +897,14 @@ export default function RewardManagement() {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={createMut.isPending || !campaigns.length} className="gap-1.5">
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createMut.isPending || !campaigns.length || !selectedCustomer}
+                className="gap-1.5"
+              >
                 {createMut.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                 Generate Secure Scratch Card Link
               </Button>
