@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customersAPI, servicesAPI } from '@/api';
 import { useAuth } from '@/context/AuthContext';
@@ -297,39 +297,57 @@ export default function ClientCustomers() {
   });
   const activeServices = servicesData ?? [];
 
-  /* ── Refresh helpers ──────────────────────────────────────── */
-  // refetchQueries directly calls the queryFn on every active observer
-  // that matches the key prefix.  Unlike invalidateQueries it bypasses
-  // staleTime and does NOT cancel in-flight requests — so it cannot
-  // race with an ongoing GET and overwrite the list with [] or undefined.
-  // React Query keeps previous data visible during the in-flight refetch,
-  // so the table is never blank.
-  const refreshList = useCallback(
-    () => qc.refetchQueries({ queryKey: ['customers'] }),
-    [qc],
-  );
-  const refreshAnalytics = useCallback(
-    () => qc.refetchQueries({ queryKey: ['customer-analytics'] }),
-    [qc],
-  );
+  /* ── Always-fresh refs ────────────────────────────────────── */
+  // Written every render so async callbacks always read the latest values,
+  // even if search / page changed while a mutation was in flight.
+  const searchRef = useRef(search);
+  const pageRef   = useRef(page);
+  searchRef.current = search;
+  pageRef.current   = page;
+
+  /* ── forceRefresh ─────────────────────────────────────────── */
+  // Calls the API directly and writes the full server response into the
+  // React Query cache via setQueryData.
+  //
+  // WHY NOT invalidateQueries / refetchQueries?
+  // Both go through React Query's internal scheduler which can silently
+  // skip the network request when staleTime (30 s) + refetchOnWindowFocus:
+  // false are combined with certain render cycles.  setQueryData with a
+  // fresh server payload bypasses the scheduler completely and is the only
+  // approach that is 100 % immune to those conditions.
+  const forceRefresh = useCallback(async () => {
+    try {
+      const s = searchRef.current;
+      const p = pageRef.current;
+      const [listRes, statsRes] = await Promise.all([
+        customersAPI.getAll({ search: s, page: p, limit: 20 }),
+        customersAPI.getAnalytics(),
+      ]);
+      // Write the complete, server-confirmed data directly into cache.
+      // The component re-renders instantly — no scheduler involved.
+      qc.setQueryData(['customers', s, p], listRes.data);
+      qc.setQueryData(['customer-analytics'], statsRes.data.data);
+    } catch {
+      // Network failure: mark stale so the next user interaction retries.
+      qc.invalidateQueries({ queryKey: ['customers'] });
+      qc.invalidateQueries({ queryKey: ['customer-analytics'] });
+    }
+  }, [qc]);
 
   /* ── Mutations ────────────────────────────────────────────── */
   const createMut = useMutation({
     mutationFn: (payload) => customersAPI.create({
       ...payload,
-      service: payload.service,   // controller maps this → serviceName
+      service: payload.service,
     }),
     onSuccess: () => {
-      // 1. Give the user instant feedback.
       toast.success('Customer added successfully.');
       setAddOpen(false);
       setForm(EMPTY_FORM);
-      // 2. Fetch the real, complete list from the server.
-      //    POST /customers has already committed to MongoDB by the time
-      //    onSuccess fires, so the GET response will include the new row.
-      //    Previous data stays visible during the ~100 ms round-trip.
-      refreshList();
-      refreshAnalytics();
+      // Fetch the confirmed server state and write it to cache.
+      // The POST has fully committed to MongoDB before onSuccess fires,
+      // so this GET will always include the newly created customer.
+      forceRefresh();
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'Failed to add customer'),
   });
@@ -339,7 +357,7 @@ export default function ClientCustomers() {
     onSuccess: () => {
       toast.success('Customer updated successfully.');
       setEditCustomer(null);
-      refreshList();
+      forceRefresh();
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'Failed to update customer'),
   });
@@ -348,18 +366,14 @@ export default function ClientCustomers() {
     mutationFn: customersAPI.delete,
     onSuccess: () => {
       toast.success('Customer deleted.');
-      refreshList();
-      refreshAnalytics();
+      forceRefresh();
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'Failed to delete customer'),
   });
 
   const waMut = useMutation({
     mutationFn: customersAPI.markWhatsapp,
-    onSuccess: () => {
-      refreshList();
-      refreshAnalytics();
-    },
+    onSuccess: () => forceRefresh(),
   });
 
   /* ── Open edit ────────────────────────────────────────────── */
