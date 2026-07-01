@@ -297,14 +297,24 @@ export default function ClientCustomers() {
   });
   const activeServices = servicesData ?? [];
 
-  /* ── Mutations ────────────────────────────────────────────── */
-  const invalidate = useCallback(() => {
-    // Force immediate refetch of every active customers query (any search/page
-    // combination that is currently mounted) so all cached pages stay in sync.
-    qc.invalidateQueries({ queryKey: ['customers'], refetchType: 'active' });
-    qc.invalidateQueries({ queryKey: ['customer-analytics'], refetchType: 'active' });
-  }, [qc]);
+  /* ── Cache helpers ────────────────────────────────────────── */
+  // Direct cache write for the currently visible page.
+  // Using setQueryData (not invalidateQueries) prevents race conditions:
+  // an immediate forced-refetch can return stale server data before MongoDB
+  // has fully indexed the write, causing a blank table.
+  // setQueryData also resets updatedAt → the query stays "fresh" for the
+  // remaining staleTime window, then refetches naturally on next mount.
+  const patchPage = useCallback(
+    (updater) => qc.setQueryData(['customers', search, page], updater),
+    [qc, search, page],
+  );
 
+  const patchAnalytics = useCallback(
+    (updater) => qc.setQueryData(['customer-analytics'], updater),
+    [qc],
+  );
+
+  /* ── Mutations ────────────────────────────────────────────── */
   const createMut = useMutation({
     mutationFn: (payload) => customersAPI.create({
       ...payload,
@@ -313,32 +323,26 @@ export default function ClientCustomers() {
     onSuccess: (response) => {
       const newCustomer = response?.data?.data;
 
-      // ── Instant UI update ──────────────────────────────────────────────
-      // Optimistically prepend the new customer to the top of the currently
-      // visible page so the table updates without waiting for the refetch.
       if (newCustomer) {
-        qc.setQueryData(['customers', search, page], (old) => {
-          if (!old) return old;
-          const updatedData  = [newCustomer, ...(old.data ?? [])].slice(0, 20);
-          const updatedTotal = (old.total ?? 0) + 1;
+        // Prepend new customer to the top of the visible list.
+        // Safe even when old is undefined (first load race) — builds
+        // a valid response shape from scratch in that case.
+        patchPage((old) => {
+          const existing    = old?.data ?? [];
+          const updatedTotal = (old?.total ?? 0) + 1;
           return {
-            ...old,
-            data:  updatedData,
+            success: true,
+            data:  [newCustomer, ...existing].slice(0, 20),
             total: updatedTotal,
-            pages: Math.ceil(updatedTotal / 20),
+            pages: Math.ceil(updatedTotal / 20) || 1,
           };
         });
 
-        // Also bump the analytics counter instantly
-        qc.setQueryData(['customer-analytics'], (old) =>
+        // Bump "Customers Added" stat card immediately.
+        patchAnalytics((old) =>
           old ? { ...old, totalCustomers: (old.totalCustomers ?? 0) + 1 } : old,
         );
       }
-
-      // ── Background sync ────────────────────────────────────────────────
-      // Refetch from the server to confirm data is in sync (handles edge
-      // cases like duplicate detection, server-side field transforms, etc.)
-      invalidate();
 
       toast.success('Customer added successfully.');
       setAddOpen(false);
@@ -351,14 +355,15 @@ export default function ClientCustomers() {
     mutationFn: ({ id, data }) => customersAPI.update(id, data),
     onSuccess: (response) => {
       const updated = response?.data?.data;
-      // Instantly patch the updated customer in-place across all cached pages
+
       if (updated) {
-        qc.setQueriesData({ queryKey: ['customers'] }, (old) => {
+        // Patch the edited row in-place — no re-sort, no flicker.
+        patchPage((old) => {
           if (!old?.data) return old;
           return { ...old, data: old.data.map((c) => (c._id === updated._id ? updated : c)) };
         });
       }
-      invalidate();
+
       toast.success('Customer updated successfully.');
       setEditCustomer(null);
     },
@@ -368,17 +373,24 @@ export default function ClientCustomers() {
   const deleteMut = useMutation({
     mutationFn: customersAPI.delete,
     onSuccess: (_, deletedId) => {
-      // Remove the deleted customer instantly from all cached pages
-      qc.setQueriesData({ queryKey: ['customers'] }, (old) => {
+      // Filter the row out immediately — list never goes empty.
+      patchPage((old) => {
         if (!old?.data) return old;
-        const updatedData  = old.data.filter((c) => c._id !== deletedId);
+        const remaining   = old.data.filter((c) => c._id !== deletedId);
         const updatedTotal = Math.max((old.total ?? 1) - 1, 0);
-        return { ...old, data: updatedData, total: updatedTotal, pages: Math.ceil(updatedTotal / 20) || 1 };
+        return {
+          ...old,
+          data:  remaining,
+          total: updatedTotal,
+          pages: Math.ceil(updatedTotal / 20) || 1,
+        };
       });
-      qc.setQueryData(['customer-analytics'], (old) =>
+
+      // Decrement stat card.
+      patchAnalytics((old) =>
         old ? { ...old, totalCustomers: Math.max((old.totalCustomers ?? 1) - 1, 0) } : old,
       );
-      invalidate();
+
       toast.success('Customer deleted.');
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'Failed to delete customer'),
@@ -386,7 +398,22 @@ export default function ClientCustomers() {
 
   const waMut = useMutation({
     mutationFn: customersAPI.markWhatsapp,
-    onSuccess: () => invalidate(),
+    onSuccess: (_, customerId) => {
+      // Update WhatsApp badge in-place without a full list refetch.
+      patchPage((old) => {
+        if (!old?.data) return old;
+        return {
+          ...old,
+          data: old.data.map((c) =>
+            c._id === customerId && c.whatsappStatus === 'pending'
+              ? { ...c, whatsappStatus: 'sent', whatsappSentAt: new Date().toISOString() }
+              : c,
+          ),
+        };
+      });
+      // Analytics sent-count stays accurate — invalidate in background.
+      qc.invalidateQueries({ queryKey: ['customer-analytics'] });
+    },
   });
 
   /* ── Open edit ────────────────────────────────────────────── */

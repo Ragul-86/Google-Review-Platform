@@ -78,7 +78,7 @@ const createCustomer = asyncHandler(async (req, res) => {
     notes:          notes     || '',
   });
 
-  res.status(201).json({ success: true, data: customer });
+  res.status(201).json({ success: true, message: 'Customer created successfully', data: customer });
 });
 
 /* ── PUT /api/customers/:id ────────────────────────────────────── */
